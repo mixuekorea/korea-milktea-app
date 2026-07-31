@@ -17,7 +17,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v6.0 综合评分版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v6.1 计数可调版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -105,6 +105,14 @@
                             <label class="text-gray-600">预估人工 (인건비)</label>
                             <input v-model.number="costs.labor" type="number" class="w-full border rounded p-1.5 mt-0.5 bg-white">
                         </div>
+                        <div>
+                            <label class="text-gray-600">其他杂项 (수도광열비 등)</label>
+                            <input v-model.number="costs.other" type="number" class="w-full border rounded p-1.5 mt-0.5 bg-white">
+                        </div>
+                        <div>
+                            <label class="text-gray-600">毛利率 (매출총이익률, %)</label>
+                            <input v-model.number="costs.marginPct" type="number" class="w-full border rounded p-1.5 mt-0.5 bg-white">
+                        </div>
                         <div class="col-span-2">
                             <label class="text-gray-600">客单价 (평균 객단가, 원)</label>
                             <input v-model.number="costs.avgTicket" type="number" class="w-full border rounded p-1.5 mt-0.5 bg-white">
@@ -139,17 +147,25 @@
 
                 <!-- 手动计数 -->
                 <div class="grid grid-cols-2 gap-3">
-                    <button @click="manualCounts.femaleTarget++" class="bg-rose-50 border-2 border-rose-400 rounded-xl p-3 flex flex-col items-center justify-center text-rose-700 active:scale-95 shadow-sm">
+                    <div class="bg-rose-50 border-2 border-rose-400 rounded-xl p-3 flex flex-col items-center justify-center text-rose-700 shadow-sm">
                         <span class="text-[11px] font-bold">👩 核心客群 (10-30女)</span>
                         <span class="text-2xl font-black my-1">{{ manualCounts.femaleTarget }}</span>
-                        <span class="text-[10px] bg-rose-200 px-2 py-0.5 rounded-full">+1 点击</span>
-                    </button>
+                        <div class="flex items-center gap-2">
+                            <button @click="manualCounts.femaleTarget = Math.max(0, manualCounts.femaleTarget - 1)" class="w-7 h-7 rounded-full bg-rose-200 active:scale-90 font-black">－</button>
+                            <button @click="manualCounts.femaleTarget++" class="w-7 h-7 rounded-full bg-rose-500 text-white active:scale-90 font-black">＋</button>
+                        </div>
+                        <button @click="manualCounts.femaleTarget = 0" class="text-[9px] text-rose-400 underline mt-1">초기화 归零</button>
+                    </div>
 
-                    <button @click="manualCounts.holdingDrink++" class="bg-amber-50 border-2 border-amber-400 rounded-xl p-3 flex flex-col items-center justify-center text-amber-800 active:scale-95 shadow-sm">
+                    <div class="bg-amber-50 border-2 border-amber-400 rounded-xl p-3 flex flex-col items-center justify-center text-amber-800 shadow-sm">
                         <span class="text-[11px] font-bold">🥤 手拿饮品者</span>
                         <span class="text-2xl font-black my-1">{{ manualCounts.holdingDrink }}</span>
-                        <span class="text-[10px] bg-amber-200 px-2 py-0.5 rounded-full">+1 点击</span>
-                    </button>
+                        <div class="flex items-center gap-2">
+                            <button @click="manualCounts.holdingDrink = Math.max(0, manualCounts.holdingDrink - 1)" class="w-7 h-7 rounded-full bg-amber-200 active:scale-90 font-black">－</button>
+                            <button @click="manualCounts.holdingDrink++" class="w-7 h-7 rounded-full bg-amber-500 text-white active:scale-90 font-black">＋</button>
+                        </div>
+                        <button @click="manualCounts.holdingDrink = 0" class="text-[9px] text-amber-500 underline mt-1">초기화 归零</button>
+                    </div>
                 </div>
 
                 <!-- 主观评估维度：可见度 / 商圈成长性 -->
@@ -305,7 +321,7 @@
                 let map = null, marker = null, ps = null, geocoder = null;
 
                 const nearbyStats = ref({ subway: '홍대입구역 (50m)', cafeCount: 6 });
-                const costs = ref({ rent: 380, labor: 350, avgTicket: 4500 });
+                const costs = ref({ rent: 380, labor: 350, other: 70, marginPct: 65, avgTicket: 4500 });
                 const manualCounts = ref({ femaleTarget: 15, holdingDrink: 8 });
                 const factors = ref({ weather: 1.0, slope: 1.0 });
                 const scoreInputs = ref({ visibility: 5, growth: 5 });
@@ -457,8 +473,8 @@
                 };
 
                 // 计算逻辑
-                const totalCost = computed(() => costs.value.rent + costs.value.labor + 70);
-                const breakevenCups = computed(() => Math.ceil(((totalCost.value * 10000) / 30) / ((costs.value.avgTicket || 4500) * 0.65)));
+                const totalCost = computed(() => costs.value.rent + costs.value.labor + (costs.value.other || 0));
+                const breakevenCups = computed(() => Math.ceil(((totalCost.value * 10000) / 30) / ((costs.value.avgTicket || 4500) * ((costs.value.marginPct || 65) / 100))));
                 const estimatedCups = computed(() => Math.round((250 + (manualCounts.value.femaleTarget * 12)) * factors.value.weather * factors.value.slope * (nearbyStats.value.cafeCount > 5 ? 0.85 : 1)));
 
                 // 임대료/매출 비율 → 자동 스코어 · 租金/营收比自动打分
