@@ -17,7 +17,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v6.1 计数可调版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v6.2 打分标准参考版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -177,7 +177,21 @@
                             <span class="font-mono font-black text-violet-600">{{ scoreInputs.visibility.toFixed(1) }}</span>
                         </div>
                         <input v-model.number="scoreInputs.visibility" type="range" min="0" max="10" step="0.5" class="w-full accent-violet-500">
-                        <div class="text-[10px] text-gray-500 mt-0.5">临街展示面、招牌可视距离、地铁/公交出入口距离</div>
+                        <div class="text-[10px] text-gray-500 mt-0.5 mb-1.5">临街展示面、招牌可视距离、地铁/公交出入口距离</div>
+                        <div class="bg-white border border-violet-200 rounded-lg overflow-hidden text-[10px]">
+                            <div class="flex justify-between px-2 py-1 border-b border-violet-100">
+                                <span class="text-rose-600 font-bold">2~4점</span>
+                                <span class="text-gray-500 text-right">地铁/公交站步行>5分钟、临街展示面窄</span>
+                            </div>
+                            <div class="flex justify-between px-2 py-1 border-b border-violet-100">
+                                <span class="text-amber-600 font-bold">5~7점</span>
+                                <span class="text-gray-500 text-right">步行3-5分钟、有一定展示面</span>
+                            </div>
+                            <div class="flex justify-between px-2 py-1">
+                                <span class="text-emerald-600 font-bold">8~10점</span>
+                                <span class="text-gray-500 text-right">地铁口/主干道正面、招牌远处可见</span>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <div class="flex justify-between items-baseline mb-1">
@@ -185,7 +199,21 @@
                             <span class="font-mono font-black text-violet-600">{{ scoreInputs.growth.toFixed(1) }}</span>
                         </div>
                         <input v-model.number="scoreInputs.growth" type="range" min="0" max="10" step="0.5" class="w-full accent-violet-500">
-                        <div class="text-[10px] text-gray-500 mt-0.5">周边新增商业体、住宅入住率、近两年租金走势</div>
+                        <div class="text-[10px] text-gray-500 mt-0.5 mb-1.5">周边新增商业体、住宅入住率、近两年租金走势</div>
+                        <div class="bg-white border border-violet-200 rounded-lg overflow-hidden text-[10px]">
+                            <div class="flex justify-between px-2 py-1 border-b border-violet-100">
+                                <span class="text-rose-600 font-bold">2~4점</span>
+                                <span class="text-gray-500 text-right">闭店比开店多，周边无新开发项目</span>
+                            </div>
+                            <div class="flex justify-between px-2 py-1 border-b border-violet-100">
+                                <span class="text-amber-600 font-bold">5~6점</span>
+                                <span class="text-gray-500 text-right">开闭店大致持平</span>
+                            </div>
+                            <div class="flex justify-between px-2 py-1">
+                                <span class="text-emerald-600 font-bold">7~10점</span>
+                                <span class="text-gray-500 text-right">开店明显多于闭店，有新住宅/写字楼在建</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
