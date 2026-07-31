@@ -17,7 +17,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v6.8 外部数据源融合版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v6.7 竞争度模型校准版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -75,37 +75,6 @@
                         <button @click="searchLocation" class="bg-amber-500 text-white px-3 py-2 rounded text-xs font-bold hover:bg-amber-600">
                             搜索定位
                         </button>
-                    </div>
-                </div>
-
-                <!-- 参考数据源面板 -->
-                <div class="border border-blue-200 bg-blue-50/50 rounded-lg overflow-hidden">
-                    <button @click="showSources = !showSources" class="w-full flex justify-between items-center p-2.5 text-xs font-bold text-blue-900">
-                        <span>📚 打分前参考数据源</span>
-                        <span>{{ showSources ? '收起 ▲' : '展开 ▼' }}</span>
-                    </button>
-                    <div v-show="showSources" class="px-2.5 pb-2.5 space-y-1.5 text-[11px]">
-                        <a href="https://sg.sbiz.or.kr" target="_blank" rel="noopener" class="flex justify-between items-center bg-white rounded p-2 shadow-sm hover:bg-blue-50">
-                            <span class="font-bold text-gray-700">소상공인 상권정보시스템</span>
-                            <span class="text-blue-600">全国商圈·免费 ↗</span>
-                        </a>
-                        <a href="https://golmok.seoul.go.kr" target="_blank" rel="noopener" class="flex justify-between items-center bg-white rounded p-2 shadow-sm hover:bg-blue-50">
-                            <span class="font-bold text-gray-700">서울 우리마을가게 상권분석</span>
-                            <span class="text-blue-600">首尔专用 ↗</span>
-                        </a>
-                        <a href="https://www.data.go.kr" target="_blank" rel="noopener" class="flex justify-between items-center bg-white rounded p-2 shadow-sm hover:bg-blue-50">
-                            <span class="font-bold text-gray-700">공공데이터포털</span>
-                            <span class="text-blue-600">人口/商圈原始数据 ↗</span>
-                        </a>
-                        <a href="https://m.nicebizmap.co.kr" target="_blank" rel="noopener" class="flex justify-between items-center bg-white rounded p-2 shadow-sm hover:bg-blue-50">
-                            <span class="font-bold text-gray-700">NICE 비즈맵</span>
-                            <span class="text-blue-600">商用/较精细 ↗</span>
-                        </a>
-                        <a href="https://map.sanai.im" target="_blank" rel="noopener" class="flex justify-between items-center bg-white rounded p-2 shadow-sm hover:bg-blue-50">
-                            <span class="font-bold text-gray-700">SANAI 상권지도</span>
-                            <span class="text-blue-600">免费/周边设施可视化 ↗</span>
-                        </a>
-                        <p class="text-[10px] text-gray-500 pt-1">💡 查到的数字不用单独记,直接填到下面「现场采样」页的外部参考值里,会自动并入对应维度评分。</p>
                     </div>
                 </div>
 
@@ -259,30 +228,6 @@
                         </div>
                         <button @click="manualCounts.holdingDrink = 0" class="text-[9px] text-amber-500 underline mt-1">초기화 归零</button>
                     </div>
-                </div>
-
-                <!-- 外部数据源参考值 -->
-                <div class="bg-purple-50/60 border border-purple-200 rounded-lg p-3 text-xs space-y-2">
-                    <div class="font-bold text-purple-900">📥 외부 데이터 참고치 · 外部数据源参考值(可选)</div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="text-gray-600 block">일 유동인구 참고 (소상공인/서울골목)</label>
-                            <input v-model.number="extRef.trafficRef" type="number" placeholder="例: 3200 (명/일)" class="w-full border rounded p-1.5 mt-0.5 bg-white">
-                        </div>
-                        <div>
-                            <label class="text-gray-600 block">동종업종 수 참고 (NICE/SANAI)</label>
-                            <input v-model.number="extRef.competitorRef" type="number" placeholder="例: 4 (개)" class="w-full border rounded p-1.5 mt-0.5 bg-white">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-gray-600 block mb-1">상권 성장 추세 (소상공인 개폐업 추세 기준)</label>
-                        <div class="flex gap-1.5">
-                            <button @click="applyGrowthPreset('down')" class="flex-1 text-[10px] py-1.5 rounded border" :class="scoreInputs.growth <= 4 ? 'bg-rose-500 text-white border-rose-500' : 'bg-white border-gray-300 text-gray-600'">📉 하락</button>
-                            <button @click="applyGrowthPreset('stable')" class="flex-1 text-[10px] py-1.5 rounded border" :class="scoreInputs.growth > 4 && scoreInputs.growth < 7 ? 'bg-amber-500 text-white border-amber-500' : 'bg-white border-gray-300 text-gray-600'">➖ 보합</button>
-                            <button @click="applyGrowthPreset('up')" class="flex-1 text-[10px] py-1.5 rounded border" :class="scoreInputs.growth >= 7 ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white border-gray-300 text-gray-600'">📈 상승</button>
-                        </div>
-                    </div>
-                    <p class="text-[10px] text-purple-700">💡 일 유동인구/동종업종 참고值填了会自动跟现场实测/Kakao数据取平均,一起计入下方对应维度评分;不填就只用现场实测和Kakao自动数据。</p>
                 </div>
 
                 <!-- 主观评估维度：可见度 / 商圈成长性 -->
@@ -525,11 +470,6 @@
                 const factors = ref({ weather: 1.0, slope: 1.0 });
                 const scoreInputs = ref({ visibility: 5, growth: 5 });
                 const saveError = ref('');
-                const showSources = ref(false);
-                const extRef = ref({ trafficRef: null, competitorRef: null });
-                const applyGrowthPreset = (level) => {
-                    scoreInputs.value.growth = { down: 3, stable: 5.5, up: 8.5 }[level];
-                };
 
                 // --- 구간 선형보간 유틸 · 区间线性插值工具 ---
                 function interpScore(x, points) {
@@ -726,31 +666,15 @@
                 const monthlyRevenue = computed(() => estimatedCups.value * 30 * (costs.value.avgTicket || 4500));
                 const rentRatioPct = computed(() => monthlyRevenue.value > 0 ? ((costs.value.rent * 10000) / monthlyRevenue.value) * 100 : 100);
 
-                // 외부 데이터 참고치와 현장 실측/Kakao 자동 데이터 혼합 · 外部参考值与现场实测/Kakao自动数据混合
-                const blendedTrafficInput = computed(() => {
-                    const onsite = trafficSessions.value.length > 0 ? avgTrafficPer5min.value : manualCounts.value.totalTraffic;
-                    const extPer5min = extRef.value.trafficRef ? extRef.value.trafficRef / 120 : null; // 일 유동인구 → 매 5분 환산(대략치, 10시간 영업 가정)
-                    if (extPer5min === null) return onsite;
-                    if (!onsite) return extPer5min;
-                    return (onsite + extPer5min) / 2;
-                });
-                const blendedCompetitorInput = computed(() => {
-                    const auto = typeof nearbyStats.value.cafeCount === 'number' ? nearbyStats.value.cafeCount : null;
-                    const ext = extRef.value.competitorRef;
-                    if (ext === null || ext === undefined || ext === '') return auto ?? 0;
-                    if (auto === null) return ext;
-                    return (auto + ext) / 2;
-                });
-
                 // 6개 항목 가중 스코어 · 6维加权评分（部分自动取数,部分手动输入）
                 const scoreDims = computed(() => [
-                    { key: 'traffic', label: '유동인구 밀도', sub: extRef.value.trafficRef ? '实测+外部参考混合' : (trafficSessions.value.length > 0 ? `实测均值(${trafficSessions.value.length}轮)` : '流动人口(单次)'), weight: 25, auto: false, score: interpScore(blendedTrafficInput.value, TRAFFIC_PTS) },
+                    { key: 'traffic', label: '유동인구 밀도', sub: trafficSessions.value.length > 0 ? `实测均值(${trafficSessions.value.length}轮)` : '流动人口(单次)', weight: 25, auto: false, score: interpScore(trafficSessions.value.length > 0 ? avgTrafficPer5min.value : manualCounts.value.totalTraffic, TRAFFIC_PTS) },
                     { key: 'match', label: '타겟 고객 일치도', sub: '客群占比', weight: 20, auto: false, score: (() => {
                         if (trafficSessions.value.length > 0) return interpScore(avgMatchRatio.value, MATCH_RATIO_PTS);
                         if (manualCounts.value.totalTraffic > 0) return interpScore((manualCounts.value.femaleTarget / manualCounts.value.totalTraffic) * 100, MATCH_RATIO_PTS);
                         return 5;
                     })() },
-                    { key: 'competition', label: '경쟁 우위', sub: extRef.value.competitorRef ? 'Kakao+NICE/SANAI混合' : '商圈成熟度(Kakao)', weight: 15, auto: true, score: interpScore(blendedCompetitorInput.value, COMPETITION_PTS) },
+                    { key: 'competition', label: '경쟁 우위', sub: '商圈成熟度', weight: 15, auto: true, score: interpScore(nearbyStats.value.cafeCount, COMPETITION_PTS) },
                     { key: 'visibility', label: '가시성·접근성', sub: '可见度', weight: 15, auto: false, score: scoreInputs.value.visibility },
                     { key: 'growth', label: '상권 성장성', sub: '成长性', weight: 10, auto: false, score: scoreInputs.value.growth },
                     { key: 'rentValue', label: '임대료 대비 잠재력', sub: '租金性价比', weight: 15, auto: true, score: interpScore(rentRatioPct.value, RENT_RATIO_PTS) },
@@ -778,7 +702,6 @@
                     factors: factors.value,
                     scoreInputs: scoreInputs.value,
                     trafficSessions: trafficSessions.value,
-                    extRef: extRef.value,
                     latlng: draftLatLng,
                     savedAt: Date.now(),
                 });
@@ -810,7 +733,6 @@
                         if (d.factors) factors.value = { ...factors.value, ...d.factors };
                         if (d.scoreInputs) scoreInputs.value = { ...scoreInputs.value, ...d.scoreInputs };
                         if (d.trafficSessions) trafficSessions.value = d.trafficSessions;
-                        if (d.extRef) extRef.value = { ...extRef.value, ...d.extRef };
                         if (d.latlng) draftLatLng = d.latlng;
                         if (d.savedAt) lastSavedText.value = new Date(d.savedAt).toLocaleTimeString('ko-KR');
                     } catch (e) { /* 손상된 데이터는 무시 */ }
@@ -837,7 +759,7 @@
 
                     // 관련 데이터 변경 시 자동으로 로컬 임시저장 · 相关数据变化时自动本地草稿保存
                     watch(
-                        [siteName, searchKeyword, currentAddressText, authorName, nearbyStats, costs, manualCounts, factors, scoreInputs, trafficSessions, extRef],
+                        [siteName, searchKeyword, currentAddressText, authorName, nearbyStats, costs, manualCounts, factors, scoreInputs, trafficSessions],
                         scheduleDraftSave,
                         { deep: true }
                     );
@@ -852,8 +774,7 @@
                     editingId, editRecord, cancelEdit,
                     saveToSupabase, deleteFromSupabase, fetchSupabaseData,
                     breakevenCups, estimatedCups, scoreDims, totalScore, decisionColor, decisionBadge, decisionEmoji,
-                    searchLocation, isKakaoLoaded,
-                    showSources, extRef, applyGrowthPreset
+                    searchLocation, isKakaoLoaded
                 };
             }
         }).mount('#app');
