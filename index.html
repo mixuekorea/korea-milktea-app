@@ -15,25 +15,25 @@
 <body class="bg-gray-100 text-gray-800 font-sans">
     <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-xl flex flex-col">
         <!-- 头部 -->
-        <header class="bg-amber-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md">
-            <span>🧋 韩国奶茶选址决策系统</span>
-            <span class="text-xs bg-amber-600 px-2 py-1 rounded">v5.0 云端实时共享版</span>
+        <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
+            <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v6.0 综合评分版</span>
         </header>
 
         <!-- 导航 Tab -->
-        <nav class="flex border-b border-gray-200 bg-gray-50 text-xs font-bold">
-            <button @click="currentTab = 'web'" :class="{'border-b-2 border-amber-500 text-amber-600 bg-white': currentTab === 'web'}" class="flex-1 py-3 text-center">
+        <nav class="flex border-b border-gray-200 bg-gray-50 text-xs font-bold sticky top-[52px] z-10">
+            <button @click="currentTab = 'web'" :class="currentTab === 'web' ? 'border-b-2 border-amber-500 text-amber-600 bg-white' : 'text-gray-400'" class="flex-1 py-3 text-center transition-colors">
                 🗺️ 地图与定位
             </button>
-            <button @click="currentTab = 'manual'" :class="{'border-b-2 border-amber-500 text-amber-600 bg-white': currentTab === 'manual'}" class="flex-1 py-3 text-center">
+            <button @click="currentTab = 'manual'" :class="currentTab === 'manual' ? 'border-b-2 border-amber-500 text-amber-600 bg-white' : 'text-gray-400'" class="flex-1 py-3 text-center transition-colors">
                 📱 现场采样
             </button>
-            <button @click="currentTab = 'report'" :class="{'border-b-2 border-amber-500 text-amber-600 bg-white': currentTab === 'report'}" class="flex-1 py-3 text-center">
+            <button @click="currentTab = 'report'" :class="currentTab === 'report' ? 'border-b-2 border-amber-500 text-amber-600 bg-white' : 'text-gray-400'" class="flex-1 py-3 text-center transition-colors">
                 📊 分析报告
             </button>
-            <button @click="currentTab = 'history'" :class="{'border-b-2 border-amber-500 text-amber-600 bg-white': currentTab === 'history'}" class="flex-1 py-3 text-center relative">
+            <button @click="currentTab = 'history'" :class="currentTab === 'history' ? 'border-b-2 border-amber-500 text-amber-600 bg-white' : 'text-gray-400'" class="flex-1 py-3 text-center relative transition-colors">
                 ☁️ 团队共享库
-                <span v-if="savedSites.length > 0" class="absolute top-1 right-1 bg-rose-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                <span v-if="savedSites.length > 0" class="absolute top-1 right-2 bg-rose-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
                     {{ savedSites.length }}
                 </span>
             </button>
@@ -105,6 +105,10 @@
                             <label class="text-gray-600">预估人工 (인건비)</label>
                             <input v-model.number="costs.labor" type="number" class="w-full border rounded p-1.5 mt-0.5 bg-white">
                         </div>
+                        <div class="col-span-2">
+                            <label class="text-gray-600">客单价 (평균 객단가, 원)</label>
+                            <input v-model.number="costs.avgTicket" type="number" class="w-full border rounded p-1.5 mt-0.5 bg-white">
+                        </div>
                     </div>
                 </div>
             </section>
@@ -147,6 +151,27 @@
                         <span class="text-[10px] bg-amber-200 px-2 py-0.5 rounded-full">+1 点击</span>
                     </button>
                 </div>
+
+                <!-- 主观评估维度：可见度 / 商圈成长性 -->
+                <div class="border rounded-lg p-3 bg-violet-50/50 border-violet-200 space-y-4 text-xs">
+                    <div class="font-bold text-violet-900">👁️ 실지 평가 지표 · 实地主观评估</div>
+                    <div>
+                        <div class="flex justify-between items-baseline mb-1">
+                            <label class="text-gray-700 font-bold">가시성·접근성 (可见度/可达性)</label>
+                            <span class="font-mono font-black text-violet-600">{{ scoreInputs.visibility.toFixed(1) }}</span>
+                        </div>
+                        <input v-model.number="scoreInputs.visibility" type="range" min="0" max="10" step="0.5" class="w-full accent-violet-500">
+                        <div class="text-[10px] text-gray-500 mt-0.5">临街展示面、招牌可视距离、地铁/公交出入口距离</div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-baseline mb-1">
+                            <label class="text-gray-700 font-bold">상권 성장성 (商圈成长趋势)</label>
+                            <span class="font-mono font-black text-violet-600">{{ scoreInputs.growth.toFixed(1) }}</span>
+                        </div>
+                        <input v-model.number="scoreInputs.growth" type="range" min="0" max="10" step="0.5" class="w-full accent-violet-500">
+                        <div class="text-[10px] text-gray-500 mt-0.5">周边新增商业体、住宅入住率、近两年租金走势</div>
+                    </div>
+                </div>
             </section>
 
             <!-- 3. 分析报告 -->
@@ -155,10 +180,35 @@
                     <div>
                         <div class="text-xs opacity-80">{{ siteName || '当前拟选铺位' }}</div>
                         <div class="text-[11px] opacity-75 truncate max-w-[200px]">{{ currentAddressText || '未选择定位' }}</div>
-                        <div class="text-3xl font-black mt-1">{{ finalScore.toFixed(0) }} <span class="text-sm font-normal">/ 100</span></div>
+                        <div class="text-3xl font-black mt-1">{{ totalScore.toFixed(0) }} <span class="text-sm font-normal">/ 100</span></div>
                         <div class="text-xs font-bold mt-1">{{ decisionBadge }}</div>
                     </div>
                     <div class="text-4xl">{{ decisionEmoji }}</div>
+                </div>
+
+                <!-- 6维加权评分明细 -->
+                <div class="border rounded-xl p-3.5 bg-white shadow-sm space-y-3">
+                    <div class="font-bold text-gray-800 text-xs flex items-center justify-between">
+                        <span>📐 종합 스코어 상세 · 综合评分明细</span>
+                        <span class="text-[10px] text-gray-400 font-normal">가중치 합산 100점</span>
+                    </div>
+                    <div v-for="d in scoreDims" :key="d.key" class="space-y-1">
+                        <div class="flex justify-between items-baseline text-[11px]">
+                            <span class="font-bold text-gray-700">
+                                {{ d.label }}
+                                <span class="text-gray-400 font-normal">{{ d.sub }}</span>
+                                <span v-if="d.auto" class="ml-1 text-[9px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">자동</span>
+                            </span>
+                            <span class="font-mono font-bold" :class="d.score >= 7 ? 'text-emerald-600' : (d.score >= 4 ? 'text-amber-600' : 'text-rose-600')">
+                                {{ d.score.toFixed(1) }} <span class="text-gray-400 font-normal">× {{ d.weight }}%</span>
+                            </span>
+                        </div>
+                        <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-300"
+                                 :class="d.score >= 7 ? 'bg-emerald-500' : (d.score >= 4 ? 'bg-amber-500' : 'bg-rose-500')"
+                                 :style="{ width: (d.score/10*100) + '%' }"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2 text-center text-xs">
@@ -170,6 +220,10 @@
                         <div class="text-gray-500">预估实际日销量</div>
                         <div class="text-lg font-black text-blue-700">{{ estimatedCups }} 杯/天</div>
                     </div>
+                </div>
+
+                <div v-if="saveError" class="bg-rose-50 border border-rose-300 text-rose-700 text-[11px] rounded-lg p-2.5 leading-relaxed">
+                    ⚠️ 저장 실패 · 保存失败：{{ saveError }}
                 </div>
 
                 <button @click="saveToSupabase" :disabled="isUploading" class="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-400 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center gap-2">
@@ -185,7 +239,11 @@
                     <button @click="fetchSupabaseData" class="text-xs text-blue-600 underline">🔄 手动刷新</button>
                 </div>
 
-                <div v-if="savedSites.length === 0" class="text-center py-8 text-gray-400 text-xs">
+                <div v-if="fetchError" class="bg-rose-50 border border-rose-300 text-rose-700 text-[11px] rounded-lg p-2.5 leading-relaxed">
+                    ⚠️ 연결 실패 · 团队共享库读取失败：{{ fetchError }}
+                </div>
+
+                <div v-if="!fetchError && savedSites.length === 0" class="text-center py-8 text-gray-400 text-xs">
                     云端暂无铺位数据。请在【分析报告】页同步第一条数据！
                 </div>
 
@@ -209,6 +267,11 @@
                             <div><span class="text-gray-400 block">月租</span><strong>{{ item.rent }}万</strong></div>
                             <div><span class="text-gray-400 block">保本线</span><strong>{{ item.breakeven_cups }}杯</strong></div>
                             <div><span class="text-gray-400 block">竞品数</span><strong>{{ item.cafe_count }}家</strong></div>
+                        </div>
+                        <div v-if="item.visibility !== undefined || item.growth !== undefined" class="grid grid-cols-3 gap-1 text-[11px] bg-violet-50 p-2 rounded text-center">
+                            <div><span class="text-gray-400 block">可见度</span><strong>{{ item.visibility ?? '-' }}</strong></div>
+                            <div><span class="text-gray-400 block">成长性</span><strong>{{ item.growth ?? '-' }}</strong></div>
+                            <div><span class="text-gray-400 block">客单价</span><strong>{{ item.avg_ticket ? item.avg_ticket + '원' : '-' }}</strong></div>
                         </div>
 
                         <div class="flex justify-end gap-2 text-xs pt-1">
@@ -242,12 +305,33 @@
                 let map = null, marker = null, ps = null, geocoder = null;
 
                 const nearbyStats = ref({ subway: '홍대입구역 (50m)', cafeCount: 6 });
-                const costs = ref({ rent: 380, labor: 350 });
+                const costs = ref({ rent: 380, labor: 350, avgTicket: 4500 });
                 const manualCounts = ref({ femaleTarget: 15, holdingDrink: 8 });
                 const factors = ref({ weather: 1.0, slope: 1.0 });
+                const scoreInputs = ref({ visibility: 5, growth: 5 });
+                const saveError = ref('');
+
+                // --- 구간 선형보간 유틸 · 区间线性插值工具 ---
+                function interpScore(x, points) {
+                    if (x <= points[0][0]) return points[0][1];
+                    if (x >= points[points.length - 1][0]) return points[points.length - 1][1];
+                    for (let i = 0; i < points.length - 1; i++) {
+                        const [x1, y1] = points[i], [x2, y2] = points[i + 1];
+                        if (x >= x1 && x <= x2) {
+                            const t = (x - x1) / (x2 - x1);
+                            return y1 + (y2 - y1) * t;
+                        }
+                    }
+                    return 5;
+                }
+                const TRAFFIC_PTS = [[10, 2], [30, 5], [60, 7], [120, 10]];
+                const MATCH_PTS = [[3, 2], [10, 5], [20, 7], [35, 10]];
+                const COMPETITION_PTS = [[0, 10], [2, 8], [4, 5], [6, 2]];
+                const RENT_RATIO_PTS = [[8, 10], [10, 9], [15, 5], [20, 2], [30, 0]];
 
                 // 从 Supabase 拉取全量铺位数据
                 const savedSites = ref([]);
+                const fetchError = ref('');
                 const fetchSupabaseData = async () => {
                     const { data, error } = await supabaseClient
                         .from('milktea_sites')
@@ -255,19 +339,26 @@
                         .order('created_at', { ascending: false });
                     if (!error && data) {
                         savedSites.value = data;
+                        fetchError.value = '';
+                    } else if (error) {
+                        fetchError.value = error.message || '연결 실패 · 团队共享库读取失败';
                     }
                 };
 
                 // 保存至 Supabase
                 const saveToSupabase = async () => {
                     isUploading.value = true;
+                    saveError.value = '';
                     localStorage.setItem('author_name', authorName.value);
                     const newEntry = {
                         site_name: siteName.value || '未命名铺位',
                         address: currentAddressText.value,
-                        score: finalScore.value,
+                        score: totalScore.value,
                         rent: costs.value.rent,
                         labor: costs.value.labor,
+                        avg_ticket: costs.value.avgTicket,
+                        visibility: scoreInputs.value.visibility,
+                        growth: scoreInputs.value.growth,
                         breakeven_cups: breakevenCups.value,
                         estimated_cups: estimatedCups.value,
                         cafe_count: nearbyStats.value.cafeCount,
@@ -275,15 +366,25 @@
                         author_name: authorName.value
                     };
 
-                    const { error } = await supabaseClient.from('milktea_sites').insert([newEntry]);
-                    isUploading.value = false;
-
-                    if (!error) {
+                    try {
+                        const { error } = await supabaseClient.from('milktea_sites').insert([newEntry]);
+                        if (error) throw error;
+                        isUploading.value = false;
                         alert('☁️ 数据已同步上传至云端共享库！其他同事刷新即可看到。');
                         fetchSupabaseData();
                         currentTab.value = 'history';
-                    } else {
-                        alert('上传失败: ' + error.message);
+                    } catch (err) {
+                        isUploading.value = false;
+                        const msg = err?.message || String(err);
+                        if (msg.includes('column') && msg.includes('does not exist')) {
+                            saveError.value = '数据表缺少新字段列，需要在Supabase后台执行一次SQL补充列（见文档说明）。原始错误: ' + msg;
+                        } else if (msg.includes('relation') && msg.includes('does not exist')) {
+                            saveError.value = '数据表milktea_sites还没有创建，需要先在Supabase后台建表。原始错误: ' + msg;
+                        } else if (msg.toLowerCase().includes('row-level security') || msg.toLowerCase().includes('policy')) {
+                            saveError.value = '数据表的RLS权限策略拦截了写入，需要在Supabase后台开放匿名insert权限。原始错误: ' + msg;
+                        } else {
+                            saveError.value = msg;
+                        }
                     }
                 };
 
@@ -323,12 +424,15 @@
 
                 const searchLocation = () => {
                     if (isKakaoLoaded.value && ps) {
+                        nearbyStats.value = { subway: '검색 중... 搜索中...', cafeCount: '-' };
                         ps.keywordSearch(searchKeyword.value, (data, status) => {
                             if (status === kakao.maps.services.Status.OK) {
                                 const firstLatlng = new kakao.maps.LatLng(data[0].y, data[0].x);
                                 marker.setPosition(firstLatlng);
                                 map.setCenter(firstLatlng);
                                 updateAddressAndAnalyze(firstLatlng);
+                            } else {
+                                nearbyStats.value = { subway: '검색 실패 · 未找到该地址,请换个关键词', cafeCount: '-' };
                             }
                         });
                     }
@@ -341,24 +445,40 @@
                         }
                     });
                     ps.categorySearch('CE7', (data, status) => {
-                        if (status === kakao.maps.services.Status.OK) nearbyStats.value.cafeCount = data.length;
+                        nearbyStats.value.cafeCount = (status === kakao.maps.services.Status.OK) ? data.length : 0;
                     }, { location: latlng, radius: 100 });
                     ps.categorySearch('SW8', (data, status) => {
                         if (status === kakao.maps.services.Status.OK && data.length > 0) {
                             nearbyStats.value.subway = `${data[0].place_name} (${data[0].distance}m)`;
+                        } else {
+                            nearbyStats.value.subway = '1km 이내 지하철역 없음 · 1公里内无地铁站';
                         }
-                    }, { location: latlng, radius: 300 });
+                    }, { location: latlng, radius: 1000, sort: kakao.maps.services.SortBy.DISTANCE });
                 };
 
                 // 计算逻辑
                 const totalCost = computed(() => costs.value.rent + costs.value.labor + 70);
-                const breakevenCups = computed(() => Math.ceil(((totalCost.value * 10000) / 30) / (4500 * 0.65)));
+                const breakevenCups = computed(() => Math.ceil(((totalCost.value * 10000) / 30) / ((costs.value.avgTicket || 4500) * 0.65)));
                 const estimatedCups = computed(() => Math.round((250 + (manualCounts.value.femaleTarget * 12)) * factors.value.weather * factors.value.slope * (nearbyStats.value.cafeCount > 5 ? 0.85 : 1)));
-                const finalScore = computed(() => Math.min(Math.max((estimatedCups.value / breakevenCups.value) * 65, 10), 98));
 
-                const decisionColor = computed(() => finalScore.value >= 75 ? 'bg-green-600' : (finalScore.value >= 55 ? 'bg-amber-500' : 'bg-red-500'));
-                const decisionBadge = computed(() => finalScore.value >= 75 ? '🟢 强烈推荐开店' : (finalScore.value >= 55 ? '🟡 谨慎谈判租金' : '🔴 不建议开店'));
-                const decisionEmoji = computed(() => finalScore.value >= 75 ? '🚀' : (finalScore.value >= 55 ? '⚖️' : '🛑'));
+                // 임대료/매출 비율 → 자동 스코어 · 租金/营收比自动打分
+                const monthlyRevenue = computed(() => estimatedCups.value * 30 * (costs.value.avgTicket || 4500));
+                const rentRatioPct = computed(() => monthlyRevenue.value > 0 ? ((costs.value.rent * 10000) / monthlyRevenue.value) * 100 : 100);
+
+                // 6개 항목 가중 스코어 · 6维加权评分（部分自动取数,部分手动输入）
+                const scoreDims = computed(() => [
+                    { key: 'traffic', label: '유동인구 밀도', sub: '流动人口', weight: 25, auto: true, score: interpScore(estimatedCups.value, TRAFFIC_PTS) },
+                    { key: 'match', label: '타겟 고객 일치도', sub: '客群匹配', weight: 20, auto: false, score: interpScore(manualCounts.value.femaleTarget, MATCH_PTS) },
+                    { key: 'competition', label: '경쟁 우위', sub: '竞争优势', weight: 15, auto: true, score: interpScore(nearbyStats.value.cafeCount, COMPETITION_PTS) },
+                    { key: 'visibility', label: '가시성·접근성', sub: '可见度', weight: 15, auto: false, score: scoreInputs.value.visibility },
+                    { key: 'growth', label: '상권 성장성', sub: '成长性', weight: 10, auto: false, score: scoreInputs.value.growth },
+                    { key: 'rentValue', label: '임대료 대비 잠재력', sub: '租金性价比', weight: 15, auto: true, score: interpScore(rentRatioPct.value, RENT_RATIO_PTS) },
+                ]);
+                const totalScore = computed(() => scoreDims.value.reduce((sum, d) => sum + (d.score / 10) * d.weight, 0));
+
+                const decisionColor = computed(() => totalScore.value >= 75 ? 'bg-green-600' : (totalScore.value >= 55 ? 'bg-amber-500' : 'bg-red-500'));
+                const decisionBadge = computed(() => totalScore.value >= 75 ? '🟢 强烈推荐开店' : (totalScore.value >= 55 ? '🟡 谨慎谈判租金' : '🔴 不建议开店'));
+                const decisionEmoji = computed(() => totalScore.value >= 75 ? '🚀' : (totalScore.value >= 55 ? '⚖️' : '🛑'));
 
                 onMounted(() => {
                     fetchSupabaseData();
@@ -373,8 +493,10 @@
 
                 return {
                     currentTab, authorName, siteName, searchKeyword, currentAddressText, nearbyStats, costs,
-                    manualCounts, factors, savedSites, isUploading, saveToSupabase, deleteFromSupabase, fetchSupabaseData,
-                    breakevenCups, estimatedCups, finalScore, decisionColor, decisionBadge, decisionEmoji, searchLocation, isKakaoLoaded
+                    manualCounts, factors, scoreInputs, savedSites, isUploading, saveError, fetchError,
+                    saveToSupabase, deleteFromSupabase, fetchSupabaseData,
+                    breakevenCups, estimatedCups, scoreDims, totalScore, decisionColor, decisionBadge, decisionEmoji,
+                    searchLocation, isKakaoLoaded
                 };
             }
         }).mount('#app');
