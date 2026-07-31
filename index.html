@@ -17,7 +17,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v6.2 打分标准参考版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v6.6 本地自动保存版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -46,6 +46,18 @@
             <div class="bg-amber-50 p-2 rounded-lg border border-amber-200 text-xs flex justify-between items-center">
                 <span class="font-bold text-amber-900">👤 当前采样员姓名：</span>
                 <input v-model="authorName" type="text" placeholder="请输入你的名字" class="border rounded px-2 py-1 text-xs bg-white text-right w-28">
+            </div>
+
+            <div class="flex justify-between items-center text-[10px] text-gray-400 px-1">
+                <span v-if="lastSavedText">💾 자동저장 · 本地草稿已自动保存于 {{ lastSavedText }}</span>
+                <span v-else>💾 자동저장 켜짐 · 本地草稿自动保存已开启</span>
+                <button @click="clearDraft" class="text-gray-400 underline">초기화 清空草稿</button>
+            </div>
+
+            <!-- 编辑模式提示条 -->
+            <div v-if="editingId" class="bg-blue-50 border border-blue-300 rounded-lg px-3 py-2 text-xs flex justify-between items-center">
+                <span class="text-blue-800 font-bold">✏️ 편집 중 · 正在编辑「{{ siteName }}」，保存后会覆盖原记录</span>
+                <button @click="cancelEdit" class="text-blue-500 underline whitespace-nowrap ml-2">취소 取消</button>
             </div>
 
             <!-- 1. 地图与地址搜索 -->
@@ -141,6 +153,56 @@
                                 <option :value="0.85">缓坡 (-15%)</option>
                                 <option :value="0.6">陡坡 (-40%)</option>
                             </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 总流动人口计数 + 计时器 -->
+                <div class="bg-sky-50 border-2 border-sky-400 rounded-xl p-3 shadow-sm space-y-2">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[11px] font-bold text-sky-800">🚶 총 유동인구 (전체 통행인원) · 总流动人口</span>
+                        <span v-if="isTiming" class="text-[11px] font-mono font-black text-sky-600">⏱ {{ timerDisplay }}</span>
+                    </div>
+                    <div class="flex items-center justify-center gap-4">
+                        <button @click="manualCounts.totalTraffic = Math.max(0, manualCounts.totalTraffic - 1)" class="w-8 h-8 rounded-full bg-sky-200 active:scale-90 font-black text-sky-800">－</button>
+                        <span class="text-3xl font-black text-sky-700 min-w-[3ch] text-center">{{ manualCounts.totalTraffic }}</span>
+                        <button @click="manualCounts.totalTraffic++" class="w-8 h-8 rounded-full bg-sky-500 text-white active:scale-90 font-black">＋</button>
+                    </div>
+                    <div class="text-[10px] text-gray-500 text-center">不分是否目标客群，路过就点一下（含男女老少）</div>
+
+                    <div class="flex items-center justify-center gap-2">
+                        <select v-model.number="timerDuration" :disabled="isTiming" class="text-[10px] border border-sky-300 rounded px-1.5 py-1 bg-white">
+                            <option :value="300">5分钟</option>
+                            <option :value="600">10分钟</option>
+                            <option :value="900">15分钟</option>
+                        </select>
+                        <button @click="startTimer" :disabled="isTiming" class="text-[10px] bg-sky-500 disabled:bg-gray-300 text-white px-3 py-1 rounded-full font-bold">
+                            {{ isTiming ? '측정 중...' : '⏱ 타이머 시작' }}
+                        </button>
+                        <button @click="manualCounts.totalTraffic = 0" class="text-[9px] text-sky-500 underline">초기화 归零</button>
+                    </div>
+
+                    <div class="flex items-center justify-center gap-2 pt-1 border-t border-sky-200">
+                        <select v-model="sessionLabel" class="text-[10px] border border-sky-300 rounded px-1.5 py-1 bg-white flex-1">
+                            <option value="평일 점심">工作日午市</option>
+                            <option value="평일 저녁">工作日晚市</option>
+                            <option value="주말 오후">周末下午</option>
+                            <option value="주말 저녁">周末晚上</option>
+                            <option value="기타">其他时段</option>
+                        </select>
+                        <button @click="saveTrafficSession" class="text-[10px] bg-emerald-500 text-white px-3 py-1.5 rounded-full font-bold whitespace-nowrap">
+                            💾 保存这轮
+                        </button>
+                    </div>
+
+                    <div v-if="trafficSessions.length > 0" class="space-y-1 pt-1">
+                        <div class="text-[10px] font-bold text-sky-900">已保存 {{ trafficSessions.length }} 轮记录：</div>
+                        <div v-for="(s, i) in trafficSessions" :key="i" class="flex justify-between items-center bg-white border border-sky-200 rounded px-2 py-1 text-[10px]">
+                            <span>{{ s.label }} · {{ s.duration / 60 }}分钟 · 共{{ s.traffic }}人 (客群{{ s.target }})</span>
+                            <button @click="trafficSessions.splice(i, 1)" class="text-rose-400 font-bold px-1">✕</button>
+                        </div>
+                        <div class="text-[10px] text-sky-900 bg-sky-100 rounded px-2 py-1.5 font-bold">
+                            📊 换算后平均：每5分钟 {{ avgTrafficPer5min.toFixed(1) }} 人 · 目标客群占比 {{ avgMatchRatio.toFixed(0) }}%
                         </div>
                     </div>
                 </div>
@@ -270,8 +332,9 @@
                     ⚠️ 저장 실패 · 保存失败：{{ saveError }}
                 </div>
 
-                <button @click="saveToSupabase" :disabled="isUploading" class="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-400 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center gap-2">
+                <button @click="saveToSupabase" :disabled="isUploading" class="w-full text-white font-bold py-3 rounded-xl shadow flex items-center justify-center gap-2" :class="editingId ? 'bg-blue-500 hover:bg-blue-600' : 'bg-amber-500 hover:bg-amber-600 disabled:bg-gray-400'">
                     <span v-if="isUploading">☁️ 云端同步中...</span>
+                    <span v-else-if="editingId">✏️ 保存修改（更新原记录）</span>
                     <span v-else>☁️ 同步上传至团队 Supabase 共享库</span>
                 </button>
             </section>
@@ -318,7 +381,8 @@
                             <div><span class="text-gray-400 block">客单价</span><strong>{{ item.avg_ticket ? item.avg_ticket + '원' : '-' }}</strong></div>
                         </div>
 
-                        <div class="flex justify-end gap-2 text-xs pt-1">
+                        <div class="flex justify-end gap-3 text-xs pt-1">
+                            <button @click="editRecord(item)" class="text-blue-600 font-bold text-[11px]">✏️ 编辑</button>
                             <button @click="deleteFromSupabase(item.id)" class="text-red-500 text-[11px]">删除记录</button>
                         </div>
                     </div>
@@ -329,7 +393,7 @@
     </div>
 
     <script>
-        const { createApp, ref, computed, onMounted, nextTick } = Vue;
+        const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
 
         const SUPABASE_URL = 'https://xmfppqbokarrqzhitzfs.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_IsKKj5d666p80xYFKcqd4g__ywvbrwM';
@@ -350,7 +414,59 @@
 
                 const nearbyStats = ref({ subway: '홍대입구역 (50m)', cafeCount: 6 });
                 const costs = ref({ rent: 380, labor: 350, other: 70, marginPct: 65, avgTicket: 4500 });
-                const manualCounts = ref({ femaleTarget: 15, holdingDrink: 8 });
+                const manualCounts = ref({ femaleTarget: 0, holdingDrink: 0, totalTraffic: 0 });
+                const isTiming = ref(false);
+                const timerDuration = ref(300);
+                const timerSeconds = ref(300);
+                let timerInterval = null;
+                const timerDisplay = computed(() => {
+                    const m = Math.floor(timerSeconds.value / 60);
+                    const s = timerSeconds.value % 60;
+                    return `${m}:${s.toString().padStart(2, '0')}`;
+                });
+                const startTimer = () => {
+                    if (isTiming.value) return;
+                    isTiming.value = true;
+                    timerSeconds.value = timerDuration.value;
+                    timerInterval = setInterval(() => {
+                        timerSeconds.value--;
+                        if (timerSeconds.value <= 0) {
+                            clearInterval(timerInterval);
+                            isTiming.value = false;
+                            alert(`⏱ ${timerDuration.value / 60}분 완료! ${timerDuration.value / 60}分钟到，记得点"保存这轮"把这次数据存下来。`);
+                        }
+                    }, 1000);
+                };
+
+                // 多轮采样记录：分时段测多次，换算成统一的"每5分钟"基准后取平均
+                const sessionLabel = ref('평일 점심');
+                const trafficSessions = ref([]);
+                const saveTrafficSession = () => {
+                    if (manualCounts.value.totalTraffic === 0) {
+                        alert('아직 카운트가 0입니다 · 还没数任何人数，先数一轮再保存。');
+                        return;
+                    }
+                    trafficSessions.value.push({
+                        label: sessionLabel.value,
+                        traffic: manualCounts.value.totalTraffic,
+                        target: manualCounts.value.femaleTarget,
+                        duration: timerDuration.value,
+                    });
+                    manualCounts.value.totalTraffic = 0;
+                    manualCounts.value.femaleTarget = 0;
+                };
+                const avgTrafficPer5min = computed(() => {
+                    if (trafficSessions.value.length === 0) return 0;
+                    const totalPer5min = trafficSessions.value.reduce((sum, s) => sum + (s.traffic * (300 / s.duration)), 0);
+                    return totalPer5min / trafficSessions.value.length;
+                });
+                const avgMatchRatio = computed(() => {
+                    if (trafficSessions.value.length === 0) return 0;
+                    const totalTraffic = trafficSessions.value.reduce((sum, s) => sum + s.traffic, 0);
+                    const totalTarget = trafficSessions.value.reduce((sum, s) => sum + s.target, 0);
+                    return totalTraffic > 0 ? (totalTarget / totalTraffic) * 100 : 0;
+                });
+
                 const factors = ref({ weather: 1.0, slope: 1.0 });
                 const scoreInputs = ref({ visibility: 5, growth: 5 });
                 const saveError = ref('');
@@ -369,7 +485,7 @@
                     return 5;
                 }
                 const TRAFFIC_PTS = [[10, 2], [30, 5], [60, 7], [120, 10]];
-                const MATCH_PTS = [[3, 2], [10, 5], [20, 7], [35, 10]];
+                const MATCH_RATIO_PTS = [[15, 2], [30, 5], [50, 7], [70, 10]];
                 const COMPETITION_PTS = [[0, 10], [2, 8], [4, 5], [6, 2]];
                 const RENT_RATIO_PTS = [[8, 10], [10, 9], [15, 5], [20, 2], [30, 0]];
 
@@ -387,6 +503,27 @@
                     } else if (error) {
                         fetchError.value = error.message || '연결 실패 · 团队共享库读取失败';
                     }
+                };
+
+                // 编辑模式：把已保存记录重新载入表单
+                const editingId = ref(null);
+                const editRecord = (item) => {
+                    editingId.value = item.id;
+                    siteName.value = item.site_name;
+                    currentAddressText.value = item.address;
+                    costs.value.rent = item.rent;
+                    costs.value.labor = item.labor;
+                    costs.value.avgTicket = item.avg_ticket ?? costs.value.avgTicket;
+                    nearbyStats.value.cafeCount = item.cafe_count ?? nearbyStats.value.cafeCount;
+                    nearbyStats.value.subway = item.subway ?? nearbyStats.value.subway;
+                    scoreInputs.value.visibility = item.visibility ?? 5;
+                    scoreInputs.value.growth = item.growth ?? 5;
+                    authorName.value = item.author_name || authorName.value;
+                    currentTab.value = 'report';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+                const cancelEdit = () => {
+                    editingId.value = null;
                 };
 
                 // 保存至 Supabase
@@ -411,10 +548,21 @@
                     };
 
                     try {
-                        const { error } = await supabaseClient.from('milktea_sites').insert([newEntry]);
+                        let error;
+                        if (editingId.value) {
+                            ({ error } = await supabaseClient.from('milktea_sites').update(newEntry).eq('id', editingId.value));
+                        } else {
+                            ({ error } = await supabaseClient.from('milktea_sites').insert([newEntry]));
+                        }
                         if (error) throw error;
                         isUploading.value = false;
-                        alert('☁️ 数据已同步上传至云端共享库！其他同事刷新即可看到。');
+                        const wasNewEntry = !editingId.value;
+                        alert(editingId.value ? '✏️ 记录已更新！' : '☁️ 数据已同步上传至云端共享库！其他同事刷新即可看到。');
+                        editingId.value = null;
+                        if (wasNewEntry) {
+                            localStorage.removeItem(DRAFT_KEY);
+                            lastSavedText.value = '';
+                        }
                         fetchSupabaseData();
                         currentTab.value = 'history';
                     } catch (err) {
@@ -440,11 +588,14 @@
                 };
 
                 // 初始化 Kakao 地图
-                const initKakaoMap = () => {
+                const initKakaoMap = (restoreLatLng) => {
                     if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.services) {
                         try {
                             const container = document.getElementById('map');
-                            const options = { center: new kakao.maps.LatLng(37.5568, 126.9238), level: 3 };
+                            const startCenter = restoreLatLng
+                                ? new kakao.maps.LatLng(restoreLatLng.lat, restoreLatLng.lng)
+                                : new kakao.maps.LatLng(37.5568, 126.9238);
+                            const options = { center: startCenter, level: 3 };
                             map = new kakao.maps.Map(container, options);
                             marker = new kakao.maps.Marker({ position: map.getCenter() });
                             marker.setMap(map);
@@ -483,6 +634,8 @@
                 };
 
                 const updateAddressAndAnalyze = (latlng) => {
+                    draftLatLng = { lat: latlng.getLat(), lng: latlng.getLng() };
+                    scheduleDraftSave();
                     geocoder.coord2Address(latlng.getLng(), latlng.getLat(), (result, status) => {
                         if (status === kakao.maps.services.Status.OK) {
                             currentAddressText.value = result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name;
@@ -503,7 +656,11 @@
                 // 计算逻辑
                 const totalCost = computed(() => costs.value.rent + costs.value.labor + (costs.value.other || 0));
                 const breakevenCups = computed(() => Math.ceil(((totalCost.value * 10000) / 30) / ((costs.value.avgTicket || 4500) * ((costs.value.marginPct || 65) / 100))));
-                const estimatedCups = computed(() => Math.round((250 + (manualCounts.value.femaleTarget * 12)) * factors.value.weather * factors.value.slope * (nearbyStats.value.cafeCount > 5 ? 0.85 : 1)));
+                const effectiveTarget = computed(() => {
+                    if (trafficSessions.value.length > 0) return (avgMatchRatio.value / 100) * avgTrafficPer5min.value;
+                    return manualCounts.value.femaleTarget;
+                });
+                const estimatedCups = computed(() => Math.round((250 + (effectiveTarget.value * 12)) * factors.value.weather * factors.value.slope * (nearbyStats.value.cafeCount > 5 ? 0.85 : 1)));
 
                 // 임대료/매출 비율 → 자동 스코어 · 租金/营收比自动打分
                 const monthlyRevenue = computed(() => estimatedCups.value * 30 * (costs.value.avgTicket || 4500));
@@ -511,8 +668,12 @@
 
                 // 6개 항목 가중 스코어 · 6维加权评分（部分自动取数,部分手动输入）
                 const scoreDims = computed(() => [
-                    { key: 'traffic', label: '유동인구 밀도', sub: '流动人口', weight: 25, auto: true, score: interpScore(estimatedCups.value, TRAFFIC_PTS) },
-                    { key: 'match', label: '타겟 고객 일치도', sub: '客群匹配', weight: 20, auto: false, score: interpScore(manualCounts.value.femaleTarget, MATCH_PTS) },
+                    { key: 'traffic', label: '유동인구 밀도', sub: trafficSessions.value.length > 0 ? `实测均值(${trafficSessions.value.length}轮)` : '流动人口(单次)', weight: 25, auto: false, score: interpScore(trafficSessions.value.length > 0 ? avgTrafficPer5min.value : manualCounts.value.totalTraffic, TRAFFIC_PTS) },
+                    { key: 'match', label: '타겟 고객 일치도', sub: '客群占比', weight: 20, auto: false, score: (() => {
+                        if (trafficSessions.value.length > 0) return interpScore(avgMatchRatio.value, MATCH_RATIO_PTS);
+                        if (manualCounts.value.totalTraffic > 0) return interpScore((manualCounts.value.femaleTarget / manualCounts.value.totalTraffic) * 100, MATCH_RATIO_PTS);
+                        return 5;
+                    })() },
                     { key: 'competition', label: '경쟁 우위', sub: '竞争优势', weight: 15, auto: true, score: interpScore(nearbyStats.value.cafeCount, COMPETITION_PTS) },
                     { key: 'visibility', label: '가시성·접근성', sub: '可见度', weight: 15, auto: false, score: scoreInputs.value.visibility },
                     { key: 'growth', label: '상권 성장성', sub: '成长性', weight: 10, auto: false, score: scoreInputs.value.growth },
@@ -524,20 +685,93 @@
                 const decisionBadge = computed(() => totalScore.value >= 75 ? '🟢 强烈推荐开店' : (totalScore.value >= 55 ? '🟡 谨慎谈判租金' : '🔴 不建议开店'));
                 const decisionEmoji = computed(() => totalScore.value >= 75 ? '🚀' : (totalScore.value >= 55 ? '⚖️' : '🛑'));
 
+                // --- 로컬 임시저장 (자동저장) · 本地草稿自动保存 ---
+                const DRAFT_KEY = 'milktea_draft_v1';
+                const lastSavedText = ref('');
+                let draftTimer = null;
+                let draftLatLng = null; // { lat, lng }，保存当前定位坐标以便刷新后地图复位
+
+                const collectDraft = () => ({
+                    siteName: siteName.value,
+                    searchKeyword: searchKeyword.value,
+                    currentAddressText: currentAddressText.value,
+                    authorName: authorName.value,
+                    nearbyStats: nearbyStats.value,
+                    costs: costs.value,
+                    manualCounts: manualCounts.value,
+                    factors: factors.value,
+                    scoreInputs: scoreInputs.value,
+                    trafficSessions: trafficSessions.value,
+                    latlng: draftLatLng,
+                    savedAt: Date.now(),
+                });
+
+                const saveDraft = () => {
+                    try {
+                        localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraft()));
+                        lastSavedText.value = new Date().toLocaleTimeString('ko-KR');
+                    } catch (e) { /* 로컬 저장 공간 부족 등은 조용히 무시 */ }
+                };
+
+                const scheduleDraftSave = () => {
+                    clearTimeout(draftTimer);
+                    draftTimer = setTimeout(saveDraft, 800);
+                };
+
+                const loadDraft = () => {
+                    try {
+                        const raw = localStorage.getItem(DRAFT_KEY);
+                        if (!raw) return;
+                        const d = JSON.parse(raw);
+                        siteName.value = d.siteName ?? siteName.value;
+                        searchKeyword.value = d.searchKeyword ?? searchKeyword.value;
+                        currentAddressText.value = d.currentAddressText ?? currentAddressText.value;
+                        authorName.value = d.authorName ?? authorName.value;
+                        if (d.nearbyStats) nearbyStats.value = d.nearbyStats;
+                        if (d.costs) costs.value = { ...costs.value, ...d.costs };
+                        if (d.manualCounts) manualCounts.value = { ...manualCounts.value, ...d.manualCounts };
+                        if (d.factors) factors.value = { ...factors.value, ...d.factors };
+                        if (d.scoreInputs) scoreInputs.value = { ...scoreInputs.value, ...d.scoreInputs };
+                        if (d.trafficSessions) trafficSessions.value = d.trafficSessions;
+                        if (d.latlng) draftLatLng = d.latlng;
+                        if (d.savedAt) lastSavedText.value = new Date(d.savedAt).toLocaleTimeString('ko-KR');
+                    } catch (e) { /* 손상된 데이터는 무시 */ }
+                };
+
+                const clearDraft = () => {
+                    if (confirm('로컬 임시저장 데이터를 삭제할까요? · 确定清除本地草稿吗？（不影响已上传到云端的记录）')) {
+                        localStorage.removeItem(DRAFT_KEY);
+                        lastSavedText.value = '';
+                        location.reload();
+                    }
+                };
+
                 onMounted(() => {
+                    loadDraft();
                     fetchSupabaseData();
-                    nextTick(() => setTimeout(initKakaoMap, 600));
+                    nextTick(() => setTimeout(() => initKakaoMap(draftLatLng), 600));
 
                     // 启用 Supabase Realtime 实时订阅
                     supabaseClient
                         .channel('public:milktea_sites')
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'milktea_sites' }, fetchSupabaseData)
                         .subscribe();
+
+                    // 관련 데이터 변경 시 자동으로 로컬 임시저장 · 相关数据变化时自动本地草稿保存
+                    watch(
+                        [siteName, searchKeyword, currentAddressText, authorName, nearbyStats, costs, manualCounts, factors, scoreInputs, trafficSessions],
+                        scheduleDraftSave,
+                        { deep: true }
+                    );
                 });
 
                 return {
                     currentTab, authorName, siteName, searchKeyword, currentAddressText, nearbyStats, costs,
                     manualCounts, factors, scoreInputs, savedSites, isUploading, saveError, fetchError,
+                    lastSavedText, clearDraft,
+                    isTiming, timerDisplay, timerDuration, startTimer,
+                    sessionLabel, trafficSessions, saveTrafficSession, avgTrafficPer5min, avgMatchRatio,
+                    editingId, editRecord, cancelEdit,
                     saveToSupabase, deleteFromSupabase, fetchSupabaseData,
                     breakevenCups, estimatedCups, scoreDims, totalScore, decisionColor, decisionBadge, decisionEmoji,
                     searchLocation, isKakaoLoaded
