@@ -20,7 +20,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v8.4 内嵌查询指南版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v8.7 三月数据校准版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -139,6 +139,7 @@
                             <input v-model.number="costs.avgTicket" type="number" class="w-full border rounded p-1.5 mt-0.5 bg-white">
                         </div>
                     </div>
+                    <p class="text-[9.5px] text-gray-400 pt-1">💡 客单价默认2842원、预估销量基础值356,均按2026年5-7月共17店营业数据校准(3个月汇总更稳健),毛利率如有更准确数据可自行修改。</p>
                 </div>
             </section>
 
@@ -674,7 +675,7 @@
                 let map = null, marker = null, ps = null, geocoder = null;
 
                 const nearbyStats = ref({ subway: '홍대입구역 (50m)', cafeCount: 6 });
-                const costs = ref({ rent: 380, labor: 350, other: 70, marginPct: 65, avgTicket: 4500 });
+                const costs = ref({ rent: 380, labor: 350, other: 70, marginPct: 65, avgTicket: 2842 });
                 const manualCounts = ref({ femaleTarget: 0, holdingDrink: 0, totalTraffic: 0 });
                 const isTiming = ref(false);
                 const timerDuration = ref(300);
@@ -970,15 +971,17 @@
 
                 // 计算逻辑
                 const totalCost = computed(() => costs.value.rent + costs.value.labor + (costs.value.other || 0));
-                const breakevenCups = computed(() => Math.ceil(((totalCost.value * 10000) / 30) / ((costs.value.avgTicket || 4500) * ((costs.value.marginPct || 65) / 100))));
+                const breakevenCups = computed(() => Math.ceil(((totalCost.value * 10000) / 30) / ((costs.value.avgTicket || 2842) * ((costs.value.marginPct || 65) / 100))));
                 const effectiveTarget = computed(() => {
                     if (trafficSessions.value.length > 0) return (avgMatchRatio.value / 100) * avgTrafficPer5min.value;
                     return manualCounts.value.femaleTarget;
                 });
-                const estimatedCups = computed(() => Math.round((250 + (effectiveTarget.value * 12)) * factors.value.weather * factors.value.slope * (nearbyStats.value.cafeCount > 5 ? 0.85 : 1)));
+                // 기준값 캘리브레이션(2026.5~7월 3개월 집계, 총 93개 매장·일 샘플): 매장당 평균 464.2잔/일
+                // 중간 유동인구/매칭도(5점) 시나리오 기준 역산: 464.2 - (9×12) = 356
+                const estimatedCups = computed(() => Math.round((356 + (effectiveTarget.value * 12)) * factors.value.weather * factors.value.slope * (nearbyStats.value.cafeCount > 5 ? 0.85 : 1)));
 
                 // 임대료/매출 비율 → 자동 스코어 · 租金/营收比自动打分
-                const monthlyRevenue = computed(() => estimatedCups.value * 30 * (costs.value.avgTicket || 4500));
+                const monthlyRevenue = computed(() => estimatedCups.value * 30 * (costs.value.avgTicket || 2842));
                 const rentRatioPct = computed(() => monthlyRevenue.value > 0 ? ((costs.value.rent * 10000) / monthlyRevenue.value) * 100 : 100);
 
                 // 6개 항목 가중 스코어 · 6维加权评分（部分自动取数,部分手动输入）
