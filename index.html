@@ -20,7 +20,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v8.8 客群定位调整版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.1 天气系数可调节版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -148,13 +148,18 @@
                 <div class="border rounded-lg p-3 bg-blue-50/50 border-blue-200 space-y-2 text-xs">
                     <div class="font-bold text-blue-900">🌤️ 采样环境与地形修正</div>
                     <div class="grid grid-cols-2 gap-2">
-                        <div>
+                        <div class="col-span-2">
                             <label class="text-gray-600">采样时天气</label>
-                            <select v-model.number="factors.weather" class="w-full border rounded p-1.5 bg-white">
-                                <option :value="1.0">晴天 / 宜人</option>
-                                <option :value="1.25">暴雨 / 大雪 (+25%)</option>
-                                <option :value="1.35">极寒波 (+35%)</option>
-                            </select>
+                            <div class="flex gap-2 items-center">
+                                <select v-model="weatherType" @change="applyWeatherPreset" class="flex-1 border rounded p-1.5 bg-white">
+                                    <option v-for="p in WEATHER_PRESETS" :key="p.key" :value="p.key">{{ p.label }}</option>
+                                </select>
+                                <div class="flex items-center gap-1 bg-white border rounded px-1.5">
+                                    <input v-model.number="weatherPct" type="number" class="w-14 p-1.5 text-right outline-none">
+                                    <span class="text-gray-400">%</span>
+                                </div>
+                            </div>
+                            <p class="text-[9.5px] text-gray-400 mt-0.5">选类型自动带出参考值(未验证估算)，可手动改成你判断更准的百分比。当前系数 ×{{ weatherMultiplier.toFixed(2) }}</p>
                         </div>
                         <div>
                             <label class="text-gray-600">坡度 (언덕길)</label>
@@ -748,7 +753,21 @@
                     })).sort((a, b) => b.avgPer5min - a.avgPer5min);
                 });
 
-                const factors = ref({ weather: 1.0, slope: 1.0 });
+                const factors = ref({ slope: 1.0 });
+                const WEATHER_PRESETS = [
+                    { key: 'clear', label: '맑음/흐림(일반) 晴天/多云(日常)', pct: 0 },
+                    { key: 'lightRainSnow', label: '가벼운 비/눈 小雨/小雪', pct: -10 },
+                    { key: 'heatwave', label: '폭염/무더위 酷暑盛夏', pct: 10 },
+                    { key: 'heavyRainSnow', label: '폭우/폭설 暴雨/暴雪', pct: -25 },
+                    { key: 'coldSnap', label: '한파 极寒波', pct: -20 },
+                ];
+                const weatherType = ref('clear');
+                const weatherPct = ref(0);
+                const applyWeatherPreset = () => {
+                    const preset = WEATHER_PRESETS.find(p => p.key === weatherType.value);
+                    if (preset) weatherPct.value = preset.pct;
+                };
+                const weatherMultiplier = computed(() => 1 + (weatherPct.value / 100));
                 const scoreInputs = ref({ visibility: 5, growth: 5 });
                 const saveError = ref('');
                 const crossCheckNote = ref('');
@@ -979,7 +998,7 @@
                 });
                 // 기준값 캘리브레이션(2026.5~7월 3개월 집계, 총 93개 매장·일 샘플): 매장당 평균 464.2잔/일
                 // 중간 유동인구/매칭도(5점) 시나리오 기준 역산: 464.2 - (9×12) = 356
-                const estimatedCups = computed(() => Math.round((356 + (effectiveTarget.value * 12)) * factors.value.weather * factors.value.slope * (nearbyStats.value.cafeCount > 5 ? 0.85 : 1)));
+                const estimatedCups = computed(() => Math.round((356 + (effectiveTarget.value * 12)) * weatherMultiplier.value * factors.value.slope * (nearbyStats.value.cafeCount > 5 ? 0.85 : 1)));
 
                 // 임대료/매출 비율 → 자동 스코어 · 租金/营收比自动打分
                 const monthlyRevenue = computed(() => estimatedCups.value * 30 * (costs.value.avgTicket || 2842));
@@ -1140,6 +1159,8 @@
                     costs: costs.value,
                     manualCounts: manualCounts.value,
                     factors: factors.value,
+                    weatherType: weatherType.value,
+                    weatherPct: weatherPct.value,
                     scoreInputs: scoreInputs.value,
                     trafficSessions: trafficSessions.value,
                     photos: photos.value,
@@ -1180,6 +1201,8 @@
                         if (d.costs) costs.value = { ...costs.value, ...d.costs };
                         if (d.manualCounts) manualCounts.value = { ...manualCounts.value, ...d.manualCounts };
                         if (d.factors) factors.value = { ...factors.value, ...d.factors };
+                        if (d.weatherType) weatherType.value = d.weatherType;
+                        if (d.weatherPct !== undefined) weatherPct.value = d.weatherPct;
                         if (d.scoreInputs) scoreInputs.value = { ...scoreInputs.value, ...d.scoreInputs };
                         if (d.trafficSessions) trafficSessions.value = d.trafficSessions;
                         if (d.photos) photos.value = d.photos;
@@ -1210,7 +1233,7 @@
 
                     // 관련 데이터 변경 시 자동으로 로컬 임시저장 · 相关数据变化时自动本地草稿保存
                     watch(
-                        [siteName, district, searchKeyword, currentAddressText, authorName, nearbyStats, costs, manualCounts, factors, scoreInputs, trafficSessions, photos, crossCheckNote],
+                        [siteName, district, searchKeyword, currentAddressText, authorName, nearbyStats, costs, manualCounts, factors, scoreInputs, trafficSessions, photos, crossCheckNote, weatherType, weatherPct],
                         scheduleDraftSave,
                         { deep: true }
                     );
@@ -1219,6 +1242,7 @@
                 return {
                     currentTab, authorName, siteName, district, searchKeyword, currentAddressText, nearbyStats, costs,
                     manualCounts, factors, scoreInputs, savedSites, isUploading, saveError, fetchError, crossCheckNote, showSourceGuide,
+                    WEATHER_PRESETS, weatherType, weatherPct, applyWeatherPreset, weatherMultiplier,
                     lastSavedText, clearDraft,
                     isTiming, timerDisplay, timerDuration, startTimer,
                     sessionLabel, trafficSessions, saveTrafficSession, avgTrafficPer5min, avgMatchRatio, sessionGroups,
