@@ -20,7 +20,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v8.7 三月数据校准版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v8.8 客群定位调整版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -247,13 +247,14 @@
                 <!-- 手动计数 -->
                 <div class="grid grid-cols-2 gap-3">
                     <div class="bg-rose-50 border-2 border-rose-400 rounded-xl p-3 flex flex-col items-center justify-center text-rose-700 shadow-sm">
-                        <span class="text-[11px] font-bold">👩 核心客群 (10-30女)</span>
+                        <span class="text-[11px] font-bold">🎯 核心客群 (学生/价格敏感型)</span>
                         <span class="text-2xl font-black my-1">{{ manualCounts.femaleTarget }}</span>
                         <div class="flex items-center gap-2">
                             <button @click="manualCounts.femaleTarget = Math.max(0, manualCounts.femaleTarget - 1)" class="w-7 h-7 rounded-full bg-rose-200 active:scale-90 font-black">－</button>
                             <button @click="manualCounts.femaleTarget++" class="w-7 h-7 rounded-full bg-rose-500 text-white active:scale-90 font-black">＋</button>
                         </div>
                         <button @click="manualCounts.femaleTarget = 0" class="text-[9px] text-rose-400 underline mt-1">초기화 归零</button>
+                        <p class="text-[8.5px] text-rose-500 text-center mt-1 leading-tight">蜜雪走性价比路线,不限性别年龄,重点数：学生党/带娃家长/校服学生/穿工装的服务业从业者等对价格敏感、高频复购的人群</p>
                     </div>
 
                     <div class="bg-amber-50 border-2 border-amber-400 rounded-xl p-3 flex flex-col items-center justify-center text-amber-800 shadow-sm">
@@ -987,7 +988,7 @@
                 // 6개 항목 가중 스코어 · 6维加权评分（部分自动取数,部分手动输入）
                 const scoreDims = computed(() => [
                     { key: 'traffic', label: '유동인구 밀도', sub: trafficSessions.value.length > 0 ? `实测均值(${trafficSessions.value.length}轮)` : '流动人口(单次)', weight: 25, auto: false, score: interpScore(trafficSessions.value.length > 0 ? avgTrafficPer5min.value : manualCounts.value.totalTraffic, TRAFFIC_PTS) },
-                    { key: 'match', label: '타겟 고객 일치도', sub: '客群占比', weight: 20, auto: false, score: (() => {
+                    { key: 'match', label: '타겟 고객 일치도', sub: '价格敏感/高频客群占比', weight: 20, auto: false, score: (() => {
                         if (trafficSessions.value.length > 0) return interpScore(avgMatchRatio.value, MATCH_RATIO_PTS);
                         if (manualCounts.value.totalTraffic > 0) return interpScore((manualCounts.value.femaleTarget / manualCounts.value.totalTraffic) * 100, MATCH_RATIO_PTS);
                         return 5;
@@ -1006,7 +1007,7 @@
                 // --- 维度人话解读(客户报告用自动生成文案) ---
                 const DIM_INTERPRET = {
                     traffic: { low: '周边流动人口偏少，客流基础较弱', mid: '周边流动人口处于中等水平', high: '周边流动人口充沛，客流基础扎实' },
-                    match: { low: '目标客群(年轻女性/学生上班族)占比偏低', mid: '目标客群占比处于中等水平', high: '目标客群占比高，与奶茶主力消费人群高度重合' },
+                    match: { low: '价格敏感型/高频复购客群(学生、周边居民等)占比偏低', mid: '价格敏感型目标客群占比处于中等水平', high: '价格敏感型客群占比高，与蜜雪"高频走量"的商业模式高度契合' },
                     competition: { low: '同业竞争激烈或商圈尚未成熟，存在一定风险', mid: '同业竞争程度适中', high: '竞争格局良好，具备差异化空间' },
                     visibility: { low: '临街展示面/可达性较弱，容易被路人忽略', mid: '可见度和可达性中等', high: '临街展示面好、招牌可视距离远，容易被看到' },
                     growth: { low: '商圈呈收缩态势，需谨慎评估长期前景', mid: '商圈总体保持稳定', high: '商圈处于成长期，未来客流有望进一步提升' },
