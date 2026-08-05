@@ -20,7 +20,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.5 外国人人口数据源版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.6 投资回收期版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -160,6 +160,26 @@
                         </div>
                     </div>
                     <p class="text-[9.5px] text-gray-400 pt-1">💡 客单价默认2842원、预估销量基础值356,均按2026年5-7月共17店营业数据校准(3个月汇总更稳健),毛利率如有更准确数据可自行修改。</p>
+                </div>
+
+                <!-- 초기 투자금(일회성) -->
+                <div class="border rounded-lg p-3 bg-indigo-50/60 border-indigo-200 space-y-2 text-xs">
+                    <div class="font-bold text-indigo-900">🏦 초기 투자금 (万韩元, 一次性)</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-gray-600">보증금 (押金,可退)</label>
+                            <input v-model.number="costs.deposit" type="number" class="w-full border rounded p-1.5 mt-0.5 bg-white">
+                        </div>
+                        <div>
+                            <label class="text-gray-600 flex items-center gap-1">권리금 (权利金,<span class="text-rose-500 font-bold">不可退</span>)</label>
+                            <input v-model.number="costs.keyMoney" type="number" class="w-full border rounded p-1.5 mt-0.5 bg-white">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-gray-600">其他一次性投入 (인테리어/설비/가맹비 등，可选)</label>
+                            <input v-model.number="costs.otherInvestment" type="number" class="w-full border rounded p-1.5 mt-0.5 bg-white">
+                        </div>
+                    </div>
+                    <p class="text-[9.5px] text-indigo-700 pt-1">💡 권리금差异极大(几百万~几个亿원都有可能)，即便日常经营指标很好，权利金过高也可能导致回本遥遥无期，请务必如实填写，报告会自动算出投资回收期。</p>
                 </div>
             </section>
 
@@ -480,6 +500,21 @@
                     </div>
                 </div>
 
+                <!-- 투자 회수 기간 -->
+                <div v-if="totalInitialInvestment > 0" class="border rounded-lg p-3 text-xs"
+                     :class="paybackMonths === Infinity ? 'bg-rose-50 border-rose-300' : 'bg-indigo-50 border-indigo-200'">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="font-bold" :class="paybackMonths === Infinity ? 'text-rose-800' : 'text-indigo-900'">🏦 투자 회수 기간 · 投资回收期</span>
+                    </div>
+                    <div v-if="paybackMonths === Infinity" class="text-rose-700 font-bold text-sm">⚠️ 현재 조건으로는 회수 불가(적자) · 当前条件下无法回收(月度亏损)</div>
+                    <div v-else class="flex justify-between items-end">
+                        <span class="text-2xl font-black text-indigo-700">{{ paybackMonths.toFixed(1) }} <span class="text-xs font-normal">个月</span></span>
+                        <span class="text-[10px] text-gray-500">初期投入 {{ totalInitialInvestment.toLocaleString() }}万원(보증금+권리금+기타)</span>
+                    </div>
+                    <p class="text-[9px] text-gray-500 mt-1">보증금(可退) {{ (costs.deposit||0).toLocaleString() }}万 + 권리금(不可退) {{ (costs.keyMoney||0).toLocaleString() }}万 + 其他 {{ (costs.otherInvestment||0).toLocaleString() }}万</p>
+                </div>
+                <div v-else class="text-[10px] text-gray-400 text-center py-1">💡 在「地图与定位」页填写보증금/권리금后，这里会自动算出投资回收期</div>
+
                 <div v-if="saveError" class="bg-rose-50 border border-rose-300 text-rose-700 text-[11px] rounded-lg p-2.5 leading-relaxed">
                     ⚠️ 저장 실패 · 保存失败：{{ saveError }}
                 </div>
@@ -592,6 +627,11 @@
                             <div><span class="text-gray-400 block">成长性</span><strong>{{ item.growth ?? '-' }}</strong></div>
                             <div><span class="text-gray-400 block">客单价</span><strong>{{ item.avg_ticket ? item.avg_ticket + '원' : '-' }}</strong></div>
                         </div>
+                        <div v-if="item.key_money" class="grid grid-cols-3 gap-1 text-[11px] bg-indigo-50 p-2 rounded text-center">
+                            <div><span class="text-gray-400 block">보증금</span><strong>{{ item.deposit || 0 }}万</strong></div>
+                            <div><span class="text-gray-400 block">권리금</span><strong class="text-rose-600">{{ item.key_money || 0 }}万</strong></div>
+                            <div><span class="text-gray-400 block">回收期</span><strong>{{ item.payback_months ? item.payback_months + '个月' : '不可回收' }}</strong></div>
+                        </div>
 
                         <div v-if="!compareMode" class="flex justify-end gap-3 text-xs pt-1">
                             <button @click.stop="editRecord(item)" class="text-blue-600 font-bold text-[11px]">✏️ 编辑</button>
@@ -652,7 +692,7 @@
                 </div>
             </div>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
                 <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px; text-align:center;">
                     <div style="font-size:11px; color:#92400e;">每日保本线</div>
                     <div style="font-size:18px; font-weight:900; color:#b45309;">{{ breakevenCups }} 杯/天</div>
@@ -660,6 +700,15 @@
                 <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px; text-align:center;">
                     <div style="font-size:11px; color:#1e40af;">预估实际日销量</div>
                     <div style="font-size:18px; font-weight:900; color:#1d4ed8;">{{ estimatedCups }} 杯/天</div>
+                </div>
+            </div>
+
+            <div v-if="totalInitialInvestment > 0" style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:12px; margin-bottom:20px;">
+                <div style="font-size:12px; font-weight:bold; color:#3730a3; margin-bottom:4px;">🏦 投资回收期</div>
+                <div v-if="paybackMonths === Infinity" style="color:#be123c; font-weight:bold; font-size:13px;">⚠️ 当前条件下无法回收(月度亏损)</div>
+                <div v-else style="display:flex; justify-content:space-between; align-items:baseline;">
+                    <span style="font-size:20px; font-weight:900; color:#4338ca;">{{ paybackMonths.toFixed(1) }} 个月</span>
+                    <span style="font-size:10px; color:#6b7280;">初期投入 {{ totalInitialInvestment.toLocaleString() }}万원(보증금+권리금+기타)</span>
                 </div>
             </div>
 
@@ -689,8 +738,10 @@
                         <th style="padding:8px; text-align:left; border-bottom:2px solid #e5e7eb;">位置</th>
                         <th style="padding:8px; text-align:center; border-bottom:2px solid #e5e7eb;">综合分</th>
                         <th style="padding:8px; text-align:center; border-bottom:2px solid #e5e7eb;">月租</th>
+                        <th style="padding:8px; text-align:center; border-bottom:2px solid #e5e7eb;">권리금</th>
                         <th style="padding:8px; text-align:center; border-bottom:2px solid #e5e7eb;">保本线</th>
                         <th style="padding:8px; text-align:center; border-bottom:2px solid #e5e7eb;">竞品数</th>
+                        <th style="padding:8px; text-align:center; border-bottom:2px solid #e5e7eb;">回收期</th>
                         <th style="padding:8px; text-align:center; border-bottom:2px solid #e5e7eb;">结论</th>
                     </tr>
                 </thead>
@@ -700,8 +751,10 @@
                         <td style="padding:8px; text-align:center; font-weight:900;"
                             :style="{ color: item.score >= 75 ? '#16a34a' : (item.score >= 55 ? '#f59e0b' : '#ef4444') }">{{ Number(item.score).toFixed(0) }}</td>
                         <td style="padding:8px; text-align:center;">{{ item.rent }}万</td>
+                        <td style="padding:8px; text-align:center;">{{ item.key_money ? item.key_money + '万' : '-' }}</td>
                         <td style="padding:8px; text-align:center;">{{ item.breakeven_cups }}杯</td>
                         <td style="padding:8px; text-align:center;">{{ item.cafe_count }}家</td>
+                        <td style="padding:8px; text-align:center;">{{ item.payback_months ? item.payback_months + '个月' : '-' }}</td>
                         <td style="padding:8px; text-align:center; font-size:11px;">
                             {{ item.score >= 75 ? '🟢 推荐' : (item.score >= 55 ? '🟡 谨慎' : '🔴 不推荐') }}
                         </td>
@@ -753,7 +806,7 @@
                         govStats.value = { competitorCount: null, totalNearby: null, loading: false, error: e.message || '조회 실패' };
                     }
                 };
-                const costs = ref({ rent: 380, labor: 350, other: 70, marginPct: 65, avgTicket: 2842 });
+                const costs = ref({ rent: 380, labor: 350, other: 70, marginPct: 65, avgTicket: 2842, deposit: 0, keyMoney: 0, otherInvestment: 0 });
                 const manualCounts = ref({ femaleTarget: 0, holdingDrink: 0, totalTraffic: 0 });
                 const isTiming = ref(false);
                 const timerDuration = ref(300);
@@ -947,6 +1000,9 @@
                     costs.value.rent = item.rent;
                     costs.value.labor = item.labor;
                     costs.value.avgTicket = item.avg_ticket ?? costs.value.avgTicket;
+                    costs.value.deposit = item.deposit ?? 0;
+                    costs.value.keyMoney = item.key_money ?? 0;
+                    costs.value.otherInvestment = item.other_investment ?? 0;
                     nearbyStats.value.cafeCount = item.cafe_count ?? nearbyStats.value.cafeCount;
                     nearbyStats.value.subway = item.subway ?? nearbyStats.value.subway;
                     scoreInputs.value.visibility = item.visibility ?? 5;
@@ -978,7 +1034,11 @@
                         estimated_cups: estimatedCups.value,
                         cafe_count: nearbyStats.value.cafeCount,
                         subway: nearbyStats.value.subway,
-                        author_name: authorName.value
+                        author_name: authorName.value,
+                        deposit: costs.value.deposit || 0,
+                        key_money: costs.value.keyMoney || 0,
+                        other_investment: costs.value.otherInvestment || 0,
+                        payback_months: (paybackMonths.value === Infinity || paybackMonths.value === null) ? null : Math.round(paybackMonths.value * 10) / 10,
                     };
 
                     const attemptSave = async (entry) => {
@@ -989,11 +1049,18 @@
                     };
 
                     try {
-                        let { error } = await attemptSave(newEntry);
-                        if (error && /column .*district.* does not exist/i.test(error.message || '')) {
-                            // district 컬럼이 아직 없는 테이블 · 表里还没加district列,自动降级重试(不阻断保存)
-                            const { district: _drop, ...fallbackEntry } = newEntry;
-                            ({ error } = await attemptSave(fallbackEntry));
+                        // 존재하지 않는 컬럼이 있으면 자동으로 제거하고 재시도(최대 6회) · 表里缺哪个列就自动去掉哪个重试,不阻断保存
+                        let entry = { ...newEntry };
+                        let error;
+                        for (let attempts = 0; attempts < 6; attempts++) {
+                            ({ error } = await attemptSave(entry));
+                            if (!error) break;
+                            const m = /column ["']?(\w+)["']? .* does not exist/i.exec(error.message || '');
+                            if (m && m[1] in entry) {
+                                delete entry[m[1]];
+                                continue;
+                            }
+                            break;
                         }
                         if (error) throw error;
                         isUploading.value = false;
@@ -1110,6 +1177,16 @@
                 const monthlyRevenue = computed(() => estimatedCups.value * 30 * (costs.value.avgTicket || 2842));
                 const rentRatioPct = computed(() => monthlyRevenue.value > 0 ? ((costs.value.rent * 10000) / monthlyRevenue.value) * 100 : 100);
 
+                // 초기 투자금 및 투자 회수 기간 · 初期投资金与投资回收期
+                const totalInitialInvestment = computed(() => (costs.value.deposit || 0) + (costs.value.keyMoney || 0) + (costs.value.otherInvestment || 0));
+                const monthlyGrossProfit = computed(() => monthlyRevenue.value * ((costs.value.marginPct || 65) / 100));
+                const monthlyNetProfit = computed(() => monthlyGrossProfit.value - (totalCost.value * 10000));
+                const paybackMonths = computed(() => {
+                    if (totalInitialInvestment.value <= 0) return null; // 미입력 · 未填写初期投资
+                    if (monthlyNetProfit.value <= 0) return Infinity; // 적자라 회수 불가 · 亏损无法回收
+                    return (totalInitialInvestment.value * 10000) / monthlyNetProfit.value;
+                });
+
                 // 6개 항목 가중 스코어 · 6维加权评分（部分自动取数,部分手动输入）
                 // Kakao(100m반경)와 정부 공식데이터(300m반경) 혼합 · Kakao(100m)+官方数据(300m)混合竞品密度
                 const blendedCompetitorCount = computed(() => {
@@ -1161,13 +1238,23 @@
                     const salesLine = ratio >= 1
                         ? `预估日销量${estimatedCups.value}杯，超过保本线${breakevenCups.value}杯（覆盖率${(ratio*100).toFixed(0)}%），盈利空间较为充足。`
                         : `预估日销量${estimatedCups.value}杯，低于保本线${breakevenCups.value}杯（覆盖率仅${(ratio*100).toFixed(0)}%），存在亏损风险。`;
+                    let paybackLine = '';
+                    if (totalInitialInvestment.value > 0) {
+                        if (paybackMonths.value === Infinity) {
+                            paybackLine = ` ⚠️ 现有条件下月度经营已是亏损，初期投入${totalInitialInvestment.value.toLocaleString()}万원完全无法回收，不建议投资。`;
+                        } else if (paybackMonths.value > 36) {
+                            paybackLine = ` ⚠️ 虽然日常经营指标尚可，但초기투자(보증금+권리금+기타)达${totalInitialInvestment.value.toLocaleString()}万원，投资回收期长达${paybackMonths.value.toFixed(0)}个月(约${(paybackMonths.value/12).toFixed(1)}年)，权利금偏高拖累了整体投资价值，建议重新协商권리금或考虑其他位置。`;
+                        } else {
+                            paybackLine = ` 按初期投入${totalInitialInvestment.value.toLocaleString()}万원计算，投资回收期约${paybackMonths.value.toFixed(1)}个月，处于合理区间。`;
+                        }
+                    }
                     if (s >= 75) {
-                        return `综合评分${s.toFixed(0)}分，其中「${strong.label}」表现最突出（${strong.score.toFixed(1)}分）。${salesLine}建议积极推进后续签约洽谈，${weak.score < 7 ? `唯「${weak.label}」相对偏弱（${weak.score.toFixed(1)}分），签约前可再核实一下。` : ''}`;
+                        return `综合评分${s.toFixed(0)}分，其中「${strong.label}」表现最突出（${strong.score.toFixed(1)}分）。${salesLine}建议积极推进后续签约洽谈，${weak.score < 7 ? `唯「${weak.label}」相对偏弱（${weak.score.toFixed(1)}分），签约前可再核实一下。` : ''}${paybackLine}`;
                     }
                     if (s >= 55) {
-                        return `综合评分${s.toFixed(0)}分，处于临界区间。短板集中在「${weak.label}」（仅${weak.score.toFixed(1)}分，${interpretDim(weak.key, weak.score)}），是拖累整体分数的主要原因。${salesLine}建议重点针对这一项做补充调研，或以此为筹码向房东争取更有利的租金条件。`;
+                        return `综合评分${s.toFixed(0)}分，处于临界区间。短板集中在「${weak.label}」（仅${weak.score.toFixed(1)}分，${interpretDim(weak.key, weak.score)}），是拖累整体分数的主要原因。${salesLine}建议重点针对这一项做补充调研，或以此为筹码向房东争取更有利的租金条件。${paybackLine}`;
                     }
-                    return `综合评分${s.toFixed(0)}分，明显偏低，「${weak.label}」尤其突出（仅${weak.score.toFixed(1)}分）。${salesLine}多项关键指标不理想，现阶段不建议在此位置投资开店。`;
+                    return `综合评分${s.toFixed(0)}分，明显偏低，「${weak.label}」尤其突出（仅${weak.score.toFixed(1)}分）。${salesLine}多项关键指标不理想，现阶段不建议在此位置投资开店。${paybackLine}`;
                 });
 
                 // --- 商圈文件夹分组(团队共享库) ---
@@ -1373,6 +1460,7 @@
                     editingId, editRecord, cancelEdit,
                     saveToSupabase, deleteFromSupabase, fetchSupabaseData,
                     breakevenCups, estimatedCups, scoreDims, totalScore, decisionColor, decisionBadge, decisionEmoji,
+                    totalInitialInvestment, monthlyNetProfit, paybackMonths,
                     interpretDim, summaryText,
                     selectedDistrict, districtGroups, openDistrict, backToDistricts, currentDistrictItems,
                     compareMode, compareSelected, toggleCompareSelect, compareItems,
