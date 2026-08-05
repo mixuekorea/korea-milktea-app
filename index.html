@@ -20,7 +20,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.6 投资回收期版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.8 保存兼容修复版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -381,14 +381,20 @@
 
             <!-- 3. 分析报告 -->
             <section v-show="currentTab === 'report'" class="space-y-4">
+                <!-- 미실측 경고 · 尚未完成现场采样警告 -->
+                <div v-if="noOnsiteData" class="bg-rose-50 border-2 border-rose-400 rounded-xl p-3 text-xs">
+                    <div class="font-bold text-rose-800 flex items-center gap-1.5">⚠️ 尚未完成现场采样,以下评分仅供初步参考</div>
+                    <p class="text-rose-700 text-[11px] leading-relaxed mt-1">"유동인구 밀도"因为没有现场实测数据,系统按最低分计算,连带拉低了"预估销量"和"임대료 대비 잠재력"这两项,导致总分和投资回收期看起来比实际情况更差。<strong>请先去「现场采样」页测一轮流动人口，再来看这份报告的结论才有意义。</strong></p>
+                </div>
+
                 <div class="p-4 rounded-xl text-white flex justify-between items-center shadow-lg" :class="decisionColor">
                     <div>
                         <div class="text-xs opacity-80">{{ siteName || '当前拟选铺位' }}</div>
                         <div class="text-[11px] opacity-75 truncate max-w-[200px]">{{ currentAddressText || '未选择定位' }}</div>
                         <div class="text-3xl font-black mt-1">{{ totalScore.toFixed(0) }} <span class="text-sm font-normal">/ 100</span></div>
-                        <div class="text-xs font-bold mt-1">{{ decisionBadge }}</div>
+                        <div class="text-xs font-bold mt-1">{{ noOnsiteData ? '⏸️ 数据不全,暂无法下结论' : decisionBadge }}</div>
                     </div>
-                    <div class="text-4xl">{{ decisionEmoji }}</div>
+                    <div class="text-4xl">{{ noOnsiteData ? '⏸️' : decisionEmoji }}</div>
                 </div>
 
                 <!-- 6维加权评分明细 -->
@@ -654,11 +660,15 @@
                 <div style="font-size:11px; color:#9ca3af; margin-top:2px;">采样员：{{ authorName }} ｜ 生成日期：{{ new Date().toLocaleDateString('zh-CN') }}</div>
             </div>
 
+            <div v-if="noOnsiteData" style="background:#fef2f2; border:2px solid #fca5a5; border-radius:8px; padding:12px; margin-bottom:16px;">
+                <div style="font-size:13px; font-weight:bold; color:#991b1b;">⚠️ 本报告尚未完成现场采样，评分仅供内部初步参考，不构成正式结论</div>
+            </div>
+
             <div style="display:flex; align-items:center; gap:16px; padding:16px; border-radius:12px; margin-bottom:14px;"
-                 :style="{ background: totalScore >= 75 ? '#16a34a' : (totalScore >= 55 ? '#f59e0b' : '#ef4444') }">
+                 :style="{ background: noOnsiteData ? '#9ca3af' : (totalScore >= 75 ? '#16a34a' : (totalScore >= 55 ? '#f59e0b' : '#ef4444')) }">
                 <div style="font-size:48px; font-weight:900; color:white;">{{ totalScore.toFixed(0) }}</div>
                 <div style="color:white;">
-                    <div style="font-size:16px; font-weight:bold;">{{ decisionBadge }}</div>
+                    <div style="font-size:16px; font-weight:bold;">{{ noOnsiteData ? '⏸️ 数据不全,暂无法下结论' : decisionBadge }}</div>
                     <div style="font-size:11px; opacity:0.85; margin-top:2px;">综合评分 / 100分</div>
                 </div>
             </div>
@@ -1055,7 +1065,9 @@
                         for (let attempts = 0; attempts < 6; attempts++) {
                             ({ error } = await attemptSave(entry));
                             if (!error) break;
-                            const m = /column ["']?(\w+)["']? .* does not exist/i.exec(error.message || '');
+                            // Supabase/PostgREST 실제 오류 형식은 두 가지 모두 나올 수 있음 · 兼容两种真实报错格式
+                            const msgNow = error.message || '';
+                            const m = /Could not find the ["']?(\w+)["']? column/i.exec(msgNow) || /column ["']?(\w+)["']? .* does not exist/i.exec(msgNow);
                             if (m && m[1] in entry) {
                                 delete entry[m[1]];
                                 continue;
@@ -1076,7 +1088,7 @@
                     } catch (err) {
                         isUploading.value = false;
                         const msg = err?.message || String(err);
-                        if (msg.includes('column') && msg.includes('does not exist')) {
+                        if ((msg.includes('column') && msg.includes('does not exist')) || msg.includes('Could not find the')) {
                             saveError.value = '数据表缺少新字段列，需要在Supabase后台执行一次SQL补充列（见文档说明）。原始错误: ' + msg;
                         } else if (msg.includes('relation') && msg.includes('does not exist')) {
                             saveError.value = '数据表milktea_sites还没有创建，需要先在Supabase后台建表。原始错误: ' + msg;
@@ -1212,7 +1224,11 @@
                 ]);
                 const totalScore = computed(() => scoreDims.value.reduce((sum, d) => sum + (d.score / 10) * d.weight, 0));
 
-                const decisionColor = computed(() => totalScore.value >= 75 ? 'bg-green-600' : (totalScore.value >= 55 ? 'bg-amber-500' : 'bg-red-500'));
+                const noOnsiteData = computed(() => trafficSessions.value.length === 0 && manualCounts.value.totalTraffic === 0);
+                const decisionColor = computed(() => {
+                    if (noOnsiteData.value) return 'bg-gray-400';
+                    return totalScore.value >= 75 ? 'bg-green-600' : (totalScore.value >= 55 ? 'bg-amber-500' : 'bg-red-500');
+                });
                 const decisionBadge = computed(() => totalScore.value >= 75 ? '🟢 强烈推荐开店' : (totalScore.value >= 55 ? '🟡 谨慎谈判租金' : '🔴 不建议开店'));
                 const decisionEmoji = computed(() => totalScore.value >= 75 ? '🚀' : (totalScore.value >= 55 ? '⚖️' : '🛑'));
 
@@ -1232,6 +1248,9 @@
                 const weakestDim = computed(() => scoreDims.value.reduce((min, d) => d.score < min.score ? d : min, scoreDims.value[0]));
                 const strongestDim = computed(() => scoreDims.value.reduce((max, d) => d.score > max.score ? d : max, scoreDims.value[0]));
                 const summaryText = computed(() => {
+                    if (noOnsiteData.value) {
+                        return '尚未进行现场流动人口采样，当前评分不具备参考价值。请先在「现场采样」页至少完成一轮计时测量，再重新查看本报告。';
+                    }
                     const s = totalScore.value;
                     const ratio = estimatedCups.value / (breakevenCups.value || 1);
                     const weak = weakestDim.value, strong = strongestDim.value;
@@ -1459,7 +1478,7 @@
                     photos, handlePhotoUpload,
                     editingId, editRecord, cancelEdit,
                     saveToSupabase, deleteFromSupabase, fetchSupabaseData,
-                    breakevenCups, estimatedCups, scoreDims, totalScore, decisionColor, decisionBadge, decisionEmoji,
+                    breakevenCups, estimatedCups, scoreDims, totalScore, decisionColor, decisionBadge, decisionEmoji, noOnsiteData,
                     totalInitialInvestment, monthlyNetProfit, paybackMonths,
                     interpretDim, summaryText,
                     selectedDistrict, districtGroups, openDistrict, backToDistricts, currentDistrictItems,
