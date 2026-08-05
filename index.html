@@ -20,7 +20,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.1 天气系数可调节版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.2 官方数据自动接入版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -112,6 +112,26 @@
                             <strong class="text-rose-500 text-xs">{{ nearbyStats.cafeCount }} 家</strong>
                         </div>
                     </div>
+                </div>
+
+                <!-- 정부 공식데이터(소상공인) 자동조회 카드 -->
+                <div class="bg-emerald-50/60 border border-emerald-200 rounded-lg p-3 text-xs space-y-2">
+                    <div class="font-bold text-emerald-900 flex justify-between items-center">
+                        <span>🏛️ 周边 300m 政府官方数据(소상공인시장진흥공단)</span>
+                    </div>
+                    <div v-if="govStats.loading" class="text-center text-emerald-600 py-2">조회 중... 查询中...</div>
+                    <div v-else-if="govStats.error" class="text-center text-rose-500 py-2 text-[10px]">⚠️ 조회 실패 · 查询失败：{{ govStats.error }}</div>
+                    <div v-else-if="govStats.competitorCount !== null" class="grid grid-cols-2 gap-2 text-center">
+                        <div class="bg-white p-2 rounded shadow-sm">
+                            <span class="text-gray-400 block text-[10px]">周边300m全部商户</span>
+                            <strong class="text-gray-700 text-xs">{{ govStats.totalNearby }} 家</strong>
+                        </div>
+                        <div class="bg-white p-2 rounded shadow-sm">
+                            <span class="text-gray-400 block text-[10px]">同业(카페/음료类)</span>
+                            <strong class="text-rose-500 text-xs">{{ govStats.competitorCount }} 家</strong>
+                        </div>
+                    </div>
+                    <div v-else class="text-center text-gray-400 py-2 text-[10px]">搜索地址后自动查询</div>
                 </div>
 
                 <!-- 铺位租金成本设置 -->
@@ -681,6 +701,22 @@
                 let map = null, marker = null, ps = null, geocoder = null;
 
                 const nearbyStats = ref({ subway: '홍대입구역 (50m)', cafeCount: 6 });
+                const govStats = ref({ competitorCount: null, totalNearby: null, loading: false, error: null });
+                const fetchGovCompetitors = async (latlng) => {
+                    govStats.value = { competitorCount: null, totalNearby: null, loading: true, error: null };
+                    try {
+                        const res = await fetch(`${SUPABASE_URL}/functions/v1/nearby-competitors`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ lat: latlng.getLat(), lng: latlng.getLng(), radius: 300 }),
+                        });
+                        const data = await res.json();
+                        if (data.error) throw new Error(data.error);
+                        govStats.value = { competitorCount: data.competitorCount, totalNearby: data.totalNearby, loading: false, error: null };
+                    } catch (e) {
+                        govStats.value = { competitorCount: null, totalNearby: null, loading: false, error: e.message || '조회 실패' };
+                    }
+                };
                 const costs = ref({ rent: 380, labor: 350, other: 70, marginPct: 65, avgTicket: 2842 });
                 const manualCounts = ref({ femaleTarget: 0, holdingDrink: 0, totalTraffic: 0 });
                 const isTiming = ref(false);
@@ -987,6 +1023,7 @@
                             nearbyStats.value.subway = '1km 이내 지하철역 없음 · 1公里内无地铁站';
                         }
                     }, { location: latlng, radius: 1000, sort: kakao.maps.services.SortBy.DISTANCE });
+                    fetchGovCompetitors(latlng);
                 };
 
                 // 计算逻辑
@@ -1005,6 +1042,16 @@
                 const rentRatioPct = computed(() => monthlyRevenue.value > 0 ? ((costs.value.rent * 10000) / monthlyRevenue.value) * 100 : 100);
 
                 // 6개 항목 가중 스코어 · 6维加权评分（部分自动取数,部分手动输入）
+                // Kakao(100m반경)와 정부 공식데이터(300m반경) 혼합 · Kakao(100m)+官方数据(300m)混合竞品密度
+                const blendedCompetitorCount = computed(() => {
+                    const kakaoCount = typeof nearbyStats.value.cafeCount === 'number' ? nearbyStats.value.cafeCount : null;
+                    const govCount = govStats.value.competitorCount;
+                    if (govCount === null) return kakaoCount ?? 0;
+                    const govEquivalent = govCount / 9; // 300m반경 면적은 100m반경의 약9배 · 粗略换算成等效100m密度
+                    if (kakaoCount === null) return govEquivalent;
+                    return (kakaoCount + govEquivalent) / 2;
+                });
+
                 const scoreDims = computed(() => [
                     { key: 'traffic', label: '유동인구 밀도', sub: trafficSessions.value.length > 0 ? `实测均值(${trafficSessions.value.length}轮)` : '流动人口(单次)', weight: 25, auto: false, score: interpScore(trafficSessions.value.length > 0 ? avgTrafficPer5min.value : manualCounts.value.totalTraffic, TRAFFIC_PTS) },
                     { key: 'match', label: '타겟 고객 일치도', sub: '价格敏感/高频客群占比', weight: 20, auto: false, score: (() => {
@@ -1012,7 +1059,7 @@
                         if (manualCounts.value.totalTraffic > 0) return interpScore((manualCounts.value.femaleTarget / manualCounts.value.totalTraffic) * 100, MATCH_RATIO_PTS);
                         return 5;
                     })() },
-                    { key: 'competition', label: '경쟁 우위', sub: '商圈成熟度(Kakao)', weight: 15, auto: true, score: interpScore(nearbyStats.value.cafeCount, COMPETITION_PTS) },
+                    { key: 'competition', label: '경쟁 우위', sub: govStats.value.competitorCount !== null ? 'Kakao+정부공식데이터 혼합' : '商圈成熟度(Kakao)', weight: 15, auto: true, score: interpScore(blendedCompetitorCount.value, COMPETITION_PTS) },
                     { key: 'visibility', label: '가시성·접근성', sub: '可见度', weight: 15, auto: false, score: scoreInputs.value.visibility },
                     { key: 'growth', label: '상권 성장성', sub: '成长性', weight: 10, auto: false, score: scoreInputs.value.growth },
                     { key: 'rentValue', label: '임대료 대비 잠재력', sub: '租金性价比', weight: 15, auto: true, score: interpScore(rentRatioPct.value, RENT_RATIO_PTS) },
@@ -1241,7 +1288,7 @@
 
                 return {
                     currentTab, authorName, siteName, district, searchKeyword, currentAddressText, nearbyStats, costs,
-                    manualCounts, factors, scoreInputs, savedSites, isUploading, saveError, fetchError, crossCheckNote, showSourceGuide,
+                    manualCounts, factors, scoreInputs, savedSites, isUploading, saveError, fetchError, crossCheckNote, showSourceGuide, govStats,
                     WEATHER_PRESETS, weatherType, weatherPct, applyWeatherPreset, weatherMultiplier,
                     lastSavedText, clearDraft,
                     isTiming, timerDisplay, timerDuration, startTimer,
