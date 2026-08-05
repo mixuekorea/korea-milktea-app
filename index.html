@@ -20,7 +20,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.3 时段自定义+季节框架版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.5 外国人人口数据源版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -405,6 +405,8 @@
                         <a href="https://golmok.seoul.go.kr" target="_blank" rel="noopener" class="text-[10px] bg-white border border-amber-300 text-amber-800 px-2 py-1 rounded-full hover:bg-amber-100">서울골목상권 ↗</a>
                         <a href="https://m.nicebizmap.co.kr" target="_blank" rel="noopener" class="text-[10px] bg-white border border-amber-300 text-amber-800 px-2 py-1 rounded-full hover:bg-amber-100">NICE비즈맵 ↗</a>
                         <a href="https://map.sanai.im" target="_blank" rel="noopener" class="text-[10px] bg-white border border-amber-300 text-amber-800 px-2 py-1 rounded-full hover:bg-amber-100">SANAI상권지도 ↗</a>
+                        <a href="https://kosis.kr" target="_blank" rel="noopener" class="text-[10px] bg-white border border-emerald-300 text-emerald-800 px-2 py-1 rounded-full hover:bg-emerald-100">KOSIS 외국인주민현황 ↗</a>
+                        <a href="https://www.moj.go.kr" target="_blank" rel="noopener" class="text-[10px] bg-white border border-emerald-300 text-emerald-800 px-2 py-1 rounded-full hover:bg-emerald-100">출입국외국인정책 통계월보 ↗</a>
                     </div>
 
                     <button @click="showSourceGuide = !showSourceGuide" class="text-[10px] text-amber-700 underline">
@@ -423,12 +425,30 @@
                             <span class="font-bold text-amber-800">③ SANAI상권지도（部分免费）</span><br>
                             首页找"주변 아파트 세대수와 예상 유동인구" → 点"3초만에 확인하기"；或"인근 상권과 전통시장 정보" → 点"무료로 분석하기"
                         </div>
+                        <div>
+                            <span class="font-bold text-emerald-800">④ KOSIS 국가통계포털（免费，查중국/베트남人口分布）</span><br>
+                            搜索"외국인주민현황" → 按시군구/읍면동筛选地区 → 按국적(中国/越南等)拆分查看人数，每年更新一次
+                        </div>
+                        <div>
+                            <span class="font-bold text-emerald-800">⑤ 출입국외국인정책 통계월보（免费，更新更频繁）</span><br>
+                            법무부官网搜"통계월보" → 下载最新月报PDF → 里面按시도/국적拆分体류外国人数据，每月更新但地理颗粒度到시군구级
+                        </div>
                     </div>
 
                     <div class="pt-1">
                         <label class="text-[10px] font-bold text-amber-800 block mb-1">📝 查完的结果记一下(会自动带进客户报告)：</label>
-                        <textarea v-model="crossCheckNote" rows="2" placeholder="例：소상공인系统显示该区域日均流动人口约2800人，与现场实测基本吻合，交叉验证通过。"
+                        <div class="flex flex-wrap gap-1 mb-1.5">
+                            <button @click="insertNoteTemplate('sbiz')" class="text-[9px] bg-white border border-amber-300 text-amber-700 px-2 py-1 rounded-full hover:bg-amber-100">+소상공인模板</button>
+                            <button @click="insertNoteTemplate('golmok')" class="text-[9px] bg-white border border-amber-300 text-amber-700 px-2 py-1 rounded-full hover:bg-amber-100">+서울골목模板</button>
+                            <button @click="insertNoteTemplate('nice')" class="text-[9px] bg-white border border-amber-300 text-amber-700 px-2 py-1 rounded-full hover:bg-amber-100">+NICE模板</button>
+                            <button @click="insertNoteTemplate('sanai')" class="text-[9px] bg-white border border-amber-300 text-amber-700 px-2 py-1 rounded-full hover:bg-amber-100">+SANAI模板</button>
+                            <button @click="insertNoteTemplate('kosis')" class="text-[9px] bg-white border border-emerald-300 text-emerald-700 px-2 py-1 rounded-full hover:bg-emerald-100">+KOSIS外国人模板</button>
+                            <button @click="insertNoteTemplate('immigration')" class="text-[9px] bg-white border border-emerald-300 text-emerald-700 px-2 py-1 rounded-full hover:bg-emerald-100">+출입국통계模板</button>
+                            <button v-if="crossCheckNote" @click="crossCheckNote = ''" class="text-[9px] text-rose-400 underline px-1">清空</button>
+                        </div>
+                        <textarea v-model="crossCheckNote" rows="3" placeholder="例：소상공인系统显示该区域日均流动人口约2800人，与现场实测基本吻合，交叉验证通过。"
                                   class="w-full border border-amber-300 rounded p-2 text-[11px] bg-white"></textarea>
+                        <p class="text-[9px] text-gray-400 mt-0.5">💡 点上面按钮插入模板，把"___"替换成实际数字即可；多个来源可以依次点插入，会自动换行拼接。</p>
                     </div>
                 </div>
 
@@ -843,6 +863,19 @@
                 const scoreInputs = ref({ visibility: 5, growth: 5 });
                 const saveError = ref('');
                 const crossCheckNote = ref('');
+                const NOTE_TEMPLATES = {
+                    sbiz: '소상공인상권정보시스템显示该区域일평균유동인구约___명、동종업종(카페/음료)约___개。与现场实测___(吻合/有出入)，交叉验证___(通过/需重新核实)。',
+                    golmok: '서울골목상권분석显示___동属于___상권类型(주거지역占比___%/기타___%/주거상업___%)，유동인구趋势___(상승/보합/하락)，매출집중요일为___。',
+                    nice: 'NICE비즈맵(___业种)显示___상권属___地区商圈，핵심客群为___(年龄/性别)，상위20%매출约___万원/하위20%매출约___万원(差距___倍)，매출최고___요일/최저___요일。与现场实测___。',
+                    sanai: 'SANAI상권지도显示半径300m内카페/디저트约___개、지하철역___개、대학교___개、생활/쇼핑___개。与现场实测和Kakao数据方向___(一致/不一致)，交叉验证___(通过/需关注)。',
+                    kosis: 'KOSIS 국가통계포털(외국인주민현황)显示该区域(___동/___구)중국籍居民约___명、베트남籍居民约___명，占该区域总人口约___%。作为中国品牌，该数据___(利好/影响有限)，理由：___。',
+                    immigration: '출입국외국인정책 통계월보(法务部,___年___月)显示该시군구体류外国人约___명，其中중국籍占比约___%、베트남籍占比约___%。与KOSIS年度数据___(一致/有出入)。',
+                };
+                const insertNoteTemplate = (key) => {
+                    const t = NOTE_TEMPLATES[key];
+                    if (!t) return;
+                    crossCheckNote.value = crossCheckNote.value ? (crossCheckNote.value.trim() + '\n' + t) : t;
+                };
                 const showSourceGuide = ref(false);
                 const photos = ref([]);
                 const handlePhotoUpload = (e) => {
@@ -1330,7 +1363,7 @@
 
                 return {
                     currentTab, authorName, siteName, district, searchKeyword, currentAddressText, nearbyStats, costs,
-                    manualCounts, factors, scoreInputs, savedSites, isUploading, saveError, fetchError, crossCheckNote, showSourceGuide, govStats,
+                    manualCounts, factors, scoreInputs, savedSites, isUploading, saveError, fetchError, crossCheckNote, showSourceGuide, govStats, insertNoteTemplate,
                     WEATHER_PRESETS, weatherType, weatherPct, applyWeatherPreset, weatherMultiplier,
                     SEASON_PRESETS, seasonType, seasonPct, applySeasonPreset, seasonMultiplier,
                     lastSavedText, clearDraft,
