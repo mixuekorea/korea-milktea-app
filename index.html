@@ -20,7 +20,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.8 保存兼容修复版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.9 交叉验证常驻版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -422,10 +422,14 @@
                     </div>
                 </div>
 
-                <!-- 临界值智能提示:只在分数处于模糊区间时,才建议手动交叉验证 -->
-                <div v-if="totalScore >= 50 && totalScore < 70" class="border border-amber-300 bg-amber-50 rounded-lg p-3 text-xs space-y-2">
-                    <div class="font-bold text-amber-800">⚠️ 分数处于临界区间,建议交叉验证一下再下结论</div>
-                    <p class="text-amber-700 text-[11px] leading-relaxed">现场实测+Kakao数据算出来是{{ totalScore.toFixed(0) }}分,不上不下。花几分钟查一下官方商圈数据做个交叉核对,更稳妥:</p>
+                <!-- 参考数据源+交叉验证工具:始终显示,不再只在临界分数才出现 -->
+                <div v-if="!noOnsiteData" class="border border-amber-300 bg-amber-50 rounded-lg p-3 text-xs space-y-2">
+                    <div class="font-bold text-amber-800">{{ totalScore >= 50 && totalScore < 70 ? '⚠️ 分数处于临界区间,建议交叉验证一下再下结论' : '📚 官方数据源交叉验证工具' }}</div>
+                    <p class="text-amber-700 text-[11px] leading-relaxed">
+                        {{ totalScore >= 50 && totalScore < 70
+                            ? `现场实测+Kakao数据算出来是${totalScore.toFixed(0)}分,不上不下。花几分钟查一下官方商圈数据做个交叉核对,更稳妥:`
+                            : '如果想再核实一下这个位置的数据(不是必须),可以用这几个官方/权威数据源做交叉验证:' }}
+                    </p>
                     <div class="flex flex-wrap gap-1.5">
                         <a href="https://sg.sbiz.or.kr" target="_blank" rel="noopener" class="text-[10px] bg-white border border-amber-300 text-amber-800 px-2 py-1 rounded-full hover:bg-amber-100">소상공인상권정보 ↗</a>
                         <a href="https://golmok.seoul.go.kr" target="_blank" rel="noopener" class="text-[10px] bg-white border border-amber-300 text-amber-800 px-2 py-1 rounded-full hover:bg-amber-100">서울골목상권 ↗</a>
