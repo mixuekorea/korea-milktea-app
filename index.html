@@ -20,7 +20,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.9 交叉验证常驻版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.11 权重调整版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -1223,8 +1223,8 @@
                     })() },
                     { key: 'competition', label: '경쟁 우위', sub: govStats.value.competitorCount !== null ? 'Kakao+정부공식데이터 혼합' : '商圈成熟度(Kakao)', weight: 15, auto: true, score: interpScore(blendedCompetitorCount.value, COMPETITION_PTS) },
                     { key: 'visibility', label: '가시성·접근성', sub: '可见度', weight: 15, auto: false, score: scoreInputs.value.visibility },
-                    { key: 'growth', label: '상권 성장성', sub: '成长性', weight: 10, auto: false, score: scoreInputs.value.growth },
-                    { key: 'rentValue', label: '임대료 대비 잠재력', sub: '租金性价比', weight: 15, auto: true, score: interpScore(rentRatioPct.value, RENT_RATIO_PTS) },
+                    { key: 'growth', label: '상권 성장성', sub: '成长性', weight: 7, auto: false, score: scoreInputs.value.growth },
+                    { key: 'rentValue', label: '임대료 대비 잠재력', sub: '租金性价比', weight: 18, auto: true, score: interpScore(rentRatioPct.value, RENT_RATIO_PTS) },
                 ]);
                 const totalScore = computed(() => scoreDims.value.reduce((sum, d) => sum + (d.score / 10) * d.weight, 0));
 
@@ -1327,23 +1327,13 @@
                             link.href = canvas.toDataURL('image/png');
                             link.click();
                         } else if (format === 'pdf') {
+                            // 자동 분할 대신 콘텐츠 높이에 맞춘 단일 페이지로 생성 · 不再自动分页,改成跟内容一样高的单页,避免内容被硬切断
                             const imgData = canvas.toDataURL('image/png');
                             const { jsPDF } = window.jspdf;
-                            const pdf = new jsPDF('p', 'mm', 'a4');
-                            const pdfWidth = pdf.internal.pageSize.getWidth();
-                            const pdfHeight = pdf.internal.pageSize.getHeight();
-                            const imgWidth = pdfWidth;
-                            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                            let heightLeft = imgHeight;
-                            let position = 0;
-                            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                            heightLeft -= pdfHeight;
-                            while (heightLeft > 0) {
-                                position = heightLeft - imgHeight;
-                                pdf.addPage();
-                                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                                heightLeft -= pdfHeight;
-                            }
+                            const pageWidthMm = 210; // A4 너비 기준 · 沿用A4宽度
+                            const pageHeightMm = (canvas.height * pageWidthMm) / canvas.width;
+                            const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: [pageWidthMm, pageHeightMm] });
+                            pdf.addImage(imgData, 'PNG', 0, 0, pageWidthMm, pageHeightMm);
                             pdf.save(filenameBase + '.pdf');
                         } else if (format === 'pptx') {
                             const imgData = canvas.toDataURL('image/png');
