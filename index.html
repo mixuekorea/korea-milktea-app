@@ -20,7 +20,7 @@
         <!-- 头部 -->
         <header class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 font-bold text-base flex justify-between items-center shadow-md sticky top-0 z-10">
             <span class="flex items-center gap-1.5">🧋 韩国奶茶选址决策系统</span>
-            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.2 官方数据自动接入版</span>
+            <span class="text-[10px] bg-white/20 backdrop-blur px-2 py-1 rounded-full font-medium tracking-wide">v9.3 时段自定义+季节框架版</span>
         </header>
 
         <!-- 导航 Tab -->
@@ -189,6 +189,19 @@
                                 <option :value="0.6">陡坡 (-40%)</option>
                             </select>
                         </div>
+                        <div class="col-span-2">
+                            <label class="text-gray-600">季节 (계절)</label>
+                            <div class="flex gap-2 items-center">
+                                <select v-model="seasonType" @change="applySeasonPreset" class="flex-1 border rounded p-1.5 bg-white">
+                                    <option v-for="p in SEASON_PRESETS" :key="p.key" :value="p.key">{{ p.label }}</option>
+                                </select>
+                                <div class="flex items-center gap-1 bg-white border rounded px-1.5">
+                                    <input v-model.number="seasonPct" type="number" class="w-14 p-1.5 text-right outline-none">
+                                    <span class="text-gray-400">%</span>
+                                </div>
+                            </div>
+                            <p class="text-[9.5px] text-gray-400 mt-0.5">⚠️ 暂无淡旺季真实数据,所有选项先占位为0%(不影响计算)。等收集到冬季数据后,可回来把具体百分比填进去。</p>
+                        </div>
                     </div>
                 </div>
 
@@ -223,12 +236,15 @@
                             <option value="평일 저녁">工作日晚市</option>
                             <option value="주말 오후">周末下午</option>
                             <option value="주말 저녁">周末晚上</option>
-                            <option value="기타">其他时段</option>
+                            <option value="기타">其他(默认标签)</option>
+                            <option value="custom">✏️ 自定义输入...</option>
                         </select>
                         <button @click="saveTrafficSession" class="text-[10px] bg-emerald-500 text-white px-3 py-1.5 rounded-full font-bold whitespace-nowrap">
                             💾 保存这轮
                         </button>
                     </div>
+                    <input v-if="sessionLabel === 'custom'" v-model="customSessionLabel" type="text" placeholder="例：周五晚高峰 / 开学季周一 / 促销首日"
+                           class="w-full text-[10px] border border-sky-300 rounded px-2 py-1.5 bg-white mt-1">
 
                     <div v-if="trafficSessions.length > 0" class="space-y-1 pt-1">
                         <div class="text-[10px] font-bold text-sky-900">已保存 {{ trafficSessions.length }} 轮记录：</div>
@@ -744,20 +760,25 @@
 
                 // 多轮采样记录：分时段测多次，换算成统一的"每5分钟"基准后取平均
                 const sessionLabel = ref('평일 점심');
+                const customSessionLabel = ref('');
                 const trafficSessions = ref([]);
                 const saveTrafficSession = () => {
                     if (manualCounts.value.totalTraffic === 0) {
                         alert('아직 카운트가 0입니다 · 还没数任何人数，先数一轮再保存。');
                         return;
                     }
+                    const finalLabel = sessionLabel.value === 'custom'
+                        ? (customSessionLabel.value.trim() || '기타(미입력)')
+                        : sessionLabel.value;
                     trafficSessions.value.push({
-                        label: sessionLabel.value,
+                        label: finalLabel,
                         traffic: manualCounts.value.totalTraffic,
                         target: manualCounts.value.femaleTarget,
                         duration: timerDuration.value,
                     });
                     manualCounts.value.totalTraffic = 0;
                     manualCounts.value.femaleTarget = 0;
+                    if (sessionLabel.value === 'custom') customSessionLabel.value = '';
                 };
                 const avgTrafficPer5min = computed(() => {
                     if (trafficSessions.value.length === 0) return 0;
@@ -804,6 +825,21 @@
                     if (preset) weatherPct.value = preset.pct;
                 };
                 const weatherMultiplier = computed(() => 1 + (weatherPct.value / 100));
+
+                // 계절 계수 프레임워크(현재 데이터 없음, 전부 0%로 시작) · 季节系数框架(暂无数据,先占位默认0%不影响计算)
+                const SEASON_PRESETS = [
+                    { key: 'unset', label: '시즌 미지정(기본) 不区分季节(默认)', pct: 0 },
+                    { key: 'peak', label: '성수기(5-7월 기준) 旺季', pct: 0 },
+                    { key: 'shoulder', label: '평수기 平季', pct: 0 },
+                    { key: 'off', label: '비수기(겨울 등) 淡季', pct: 0 },
+                ];
+                const seasonType = ref('unset');
+                const seasonPct = ref(0);
+                const applySeasonPreset = () => {
+                    const preset = SEASON_PRESETS.find(p => p.key === seasonType.value);
+                    if (preset) seasonPct.value = preset.pct;
+                };
+                const seasonMultiplier = computed(() => 1 + (seasonPct.value / 100));
                 const scoreInputs = ref({ visibility: 5, growth: 5 });
                 const saveError = ref('');
                 const crossCheckNote = ref('');
@@ -1035,7 +1071,7 @@
                 });
                 // 기준값 캘리브레이션(2026.5~7월 3개월 집계, 총 93개 매장·일 샘플): 매장당 평균 464.2잔/일
                 // 중간 유동인구/매칭도(5점) 시나리오 기준 역산: 464.2 - (9×12) = 356
-                const estimatedCups = computed(() => Math.round((356 + (effectiveTarget.value * 12)) * weatherMultiplier.value * factors.value.slope * (nearbyStats.value.cafeCount > 5 ? 0.85 : 1)));
+                const estimatedCups = computed(() => Math.round((356 + (effectiveTarget.value * 12)) * weatherMultiplier.value * seasonMultiplier.value * factors.value.slope * (nearbyStats.value.cafeCount > 5 ? 0.85 : 1)));
 
                 // 임대료/매출 비율 → 자동 스코어 · 租金/营收比自动打分
                 const monthlyRevenue = computed(() => estimatedCups.value * 30 * (costs.value.avgTicket || 2842));
@@ -1208,6 +1244,9 @@
                     factors: factors.value,
                     weatherType: weatherType.value,
                     weatherPct: weatherPct.value,
+                    seasonType: seasonType.value,
+                    seasonPct: seasonPct.value,
+                    customSessionLabel: customSessionLabel.value,
                     scoreInputs: scoreInputs.value,
                     trafficSessions: trafficSessions.value,
                     photos: photos.value,
@@ -1250,6 +1289,9 @@
                         if (d.factors) factors.value = { ...factors.value, ...d.factors };
                         if (d.weatherType) weatherType.value = d.weatherType;
                         if (d.weatherPct !== undefined) weatherPct.value = d.weatherPct;
+                        if (d.seasonType) seasonType.value = d.seasonType;
+                        if (d.seasonPct !== undefined) seasonPct.value = d.seasonPct;
+                        if (d.customSessionLabel) customSessionLabel.value = d.customSessionLabel;
                         if (d.scoreInputs) scoreInputs.value = { ...scoreInputs.value, ...d.scoreInputs };
                         if (d.trafficSessions) trafficSessions.value = d.trafficSessions;
                         if (d.photos) photos.value = d.photos;
@@ -1280,7 +1322,7 @@
 
                     // 관련 데이터 변경 시 자동으로 로컬 임시저장 · 相关数据变化时自动本地草稿保存
                     watch(
-                        [siteName, district, searchKeyword, currentAddressText, authorName, nearbyStats, costs, manualCounts, factors, scoreInputs, trafficSessions, photos, crossCheckNote, weatherType, weatherPct],
+                        [siteName, district, searchKeyword, currentAddressText, authorName, nearbyStats, costs, manualCounts, factors, scoreInputs, trafficSessions, photos, crossCheckNote, weatherType, weatherPct, seasonType, seasonPct, customSessionLabel],
                         scheduleDraftSave,
                         { deep: true }
                     );
@@ -1290,9 +1332,10 @@
                     currentTab, authorName, siteName, district, searchKeyword, currentAddressText, nearbyStats, costs,
                     manualCounts, factors, scoreInputs, savedSites, isUploading, saveError, fetchError, crossCheckNote, showSourceGuide, govStats,
                     WEATHER_PRESETS, weatherType, weatherPct, applyWeatherPreset, weatherMultiplier,
+                    SEASON_PRESETS, seasonType, seasonPct, applySeasonPreset, seasonMultiplier,
                     lastSavedText, clearDraft,
                     isTiming, timerDisplay, timerDuration, startTimer,
-                    sessionLabel, trafficSessions, saveTrafficSession, avgTrafficPer5min, avgMatchRatio, sessionGroups,
+                    sessionLabel, customSessionLabel, trafficSessions, saveTrafficSession, avgTrafficPer5min, avgMatchRatio, sessionGroups,
                     photos, handlePhotoUpload,
                     editingId, editRecord, cancelEdit,
                     saveToSupabase, deleteFromSupabase, fetchSupabaseData,
